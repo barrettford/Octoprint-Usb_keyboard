@@ -5,12 +5,86 @@ import octoprint.plugin
 import octoprint.printer
 import re
 import json
-from pynput import keyboard
+# from pynput import keyboard
+import threading
+import sys, termios, tty, os, time
 from octoprint.events import Events, eventManager, all_events
+# from inputs import get_key
+# from pyhooked import Hook, KeyboardEvent, MouseEvent
+from evdev import InputDevice, categorize, ecodes
+
+
+
+
 
 key_dict = {}
 
+# If trying to use evdev
+def key_read_loop():
+  KEY_STATE = ["released", "pressed", "pressed"] # Maybe turn [2] into "hold" one day
+  key_dict = {}
+  
+  for x in range(1, 4):
+    try:
+      path = "/dev/input/event{}".format(x)
+      device = InputDevice(path) # my keyboard
+      for event in device.read_loop():
+        if event.type == ecodes.EV_KEY:
+          key_event = categorize(event)
+          
+          key_name = key_event.keycode
+          key_state = KEY_STATE[key_event.keystate]
+          if key_dict.get(key_name) == key_state:
+            return
+          else:
+            key_dict[key_name] = key_state
+            eventManager().fire("plugin_usb_keyboard_key_event", dict(key=key_name, key_state=key_state))
+      break
+    except OSError as e:
+      print("Darn...", e)
 
+
+# If trying to use inputs
+def keyboard_listener():
+  KEY_STATE = ["released", "pressed", "pressed"] # Maybe turn this into "held" one day
+  key_dict = {}
+  
+  while(1):    
+    try:
+      # events = get_key()
+      if events:
+        # print(f"****** EVENTS {len(events)}")
+        
+        # for event in events[:2]:
+        event = events[1]
+        if event.ev_type == "Key":
+          # print("**** Event Type:") # Key for pressing events
+      #     print(event.ev_type)
+          
+          # print("**** Event Code:") # Name of Key, starts with KEY_
+          # print(event.code)
+          # print("**** Event State:") # 1 = pressed, 2 = held, 0 = released
+          # print(event.state)
+          # print(event.ev_type, event.code, event.state)
+          # print(event.code)
+          key_name = event.code
+          print(f"event state {event.state}")
+          
+          if event.state > 1:
+            # print("holding")
+            continue
+
+          key_state = KEY_STATE[event.state]
+          if key_dict.get(key_name) == key_state:
+            return
+          else:
+            key_dict[key_name] = key_state
+            eventManager().fire("plugin_usb_keyboard_key_event", dict(key=key_name, key_state=key_state))
+    except IOError as e:
+      print(e)
+    time.sleep(0.001)
+
+# If trying to use pynput
 def on_key(key, key_state, key_dict = key_dict):
   try:
     # print('alphanumeric key {0} pressed'.format(key.char))
@@ -112,7 +186,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     key_state = payload["key_state"]
     
     # print(all_events())
-    if key_state is "pressed":
+    if key_state == "pressed":
       self.last_key_pressed = key
       if self.key_discovery:
         self.key_discovery["name"] = key
@@ -123,7 +197,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     
     
     active_profile = self._settings.get(["active_profile"])
-    # self._logger.info(f"Key '{key}' {key_state}")
+    self._logger.info(f"Key '{key}' {key_state}")
     
     commands = self._settings.get(["profiles", active_profile, "commands"])
     if not commands:
@@ -212,8 +286,12 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     self._settings.set(["key_discovery"], {})
     
     eventManager().subscribe("plugin_usb_keyboard_key_event", self._key_event)
-    self.listener = keyboard.Listener(on_press=on_press,on_release=on_release,suppress=False)
+    self.listener = threading.Thread(target=key_read_loop, daemon=True) # Make thread a daemon thread
     self.listener.start()
+    # self.listener = threading.Thread(target=keyboard_listener, daemon=True) # Make thread a daemon thread
+    # self.listener.start()
+    # self.listener = keyboard.Listener(on_press=on_press,on_release=on_release,suppress=False)
+    # self.listener.start()
 
   ##~~ SettingsPlugin mixin
 
