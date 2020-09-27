@@ -334,18 +334,18 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
             "KPDOT":{"pressed":{"listen_vars":["distance"]}, "released":{"save_vars":["distance"]}},  # making this my variable modifier
             "KPENTER":{"pressed":{"printer":["G28 Z"]}}, # homing z
             
-            "KP1":{"pressed":{"printer":["G0 X10 Y10"]}, "variable_values":{"distance":"1", "bed":"60", "hotend":"210"}},  # front left corner, 10x10 in
-            "KP2":{"pressed":{"printer":["G0 Y-<distance>"]}, "variable_values":{"distance":"10"}},  # move south
-            "KP3":{"pressed":{"printer":["G0 X290 Y10"]}, "variable_values":{"distance":"100"}},  # front right corner, 10x10 in
-            "KP4":{"pressed":{"printer":["G0 X-<distance>"]}},  # move west
-            "KP5":{"pressed":{"printer":["G0 X150 Y150"]}},  # center
-            "KP6":{"pressed":{"printer":["G0 X+<distance>"]}},  # move east
-            "KP7":{"pressed":{"printer":["G0 X10 Y290"]}},  # rear left corner, 10x10 in
-            "KP8":{"pressed":{"printer":["G0 Y+<distance>"]}},  # move north
-            "KP9":{"pressed":{"printer":["G0 X290 Y290"]}},  # rear right corner, 10x10 in
+            "KP1":{"pressed":{"printer":["G0 X10 Y10 F6000"]}, "variable_values":{"distance":"1", "bed":"60", "hotend":"210"}},  # front left corner, 10x10 in
+            "KP2":{"pressed":{"printer":["G91","G0 Y-<distance> F6000","G90"]}, "variable_values":{"distance":"10"}},  # move south
+            "KP3":{"pressed":{"printer":["G0 X290 Y10 F6000"]}, "variable_values":{"distance":"100"}},  # front right corner, 10x10 in
+            "KP4":{"pressed":{"printer":["G91","G0 X-<distance> F6000","G90"]}},  # move west
+            "KP5":{"pressed":{"printer":["G0 X150 Y150 F6000"]}},  # center
+            "KP6":{"pressed":{"printer":["G91","G0 X+<distance> F6000","G90"]}},  # move east
+            "KP7":{"pressed":{"printer":["G0 X10 Y290 F6000"]}},  # rear left corner, 10x10 in
+            "KP8":{"pressed":{"printer":["G91","G0 Y+<distance> F6000","G90"]}},  # move north
+            "KP9":{"pressed":{"printer":["G0 X290 Y290 F6000"]}},  # rear right corner, 10x10 in
             
-            "KPPLUS":{"pressed":{"printer":["G0 Z-<distance>"]}},  # move down
-            "KPMINUS":{"pressed":{"printer":["G0 Z+<distance>"]}},  # move up
+            "KPPLUS":{"pressed":{"printer":["G91","G0 Z-<distance> F300","G90"]}},  # move down
+            "KPMINUS":{"pressed":{"printer":["G91","G0 Z+<distance> F300","G90"]}},  # move up
             
             
             "BACKSPACE":{"pressed":{"listen_vars":["bed","hotend"]}, "released":{"save_vars":["bed","hotend"]}},  # set temperatures for hotend and bed
