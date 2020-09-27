@@ -139,6 +139,7 @@ def on_release(key):  # The function that's called when a key is released
   # print("Key released: {0}".format(key))
 
 class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
+                         octoprint.plugin.ShutdownPlugin,
                          octoprint.plugin.SettingsPlugin,
                          octoprint.plugin.SimpleApiPlugin,
                          octoprint.plugin.EventHandlerPlugin,
@@ -233,7 +234,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
           
           if saving_var:
             # self._logger.info(f"Saving value '{saving_var}' to variable '{save_variable_command}'.")
-            # self._settings.set(["profiles", active_profile, "variables", save_variable_command], saving_var)
+            self._settings.set(["profiles", active_profile, "variables", save_variable_command], saving_var)
             # self._settings.save()
             del self.listening_variables[save_variable_command]
           else:
@@ -262,7 +263,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       printer_commands = current_action.get("printer", [])
       for printer_command in printer_commands:
         subbed_command = self.variable_sub(printer_command)
-        self._logger.info(f"Found printer command for key '{key}'. Sending '{subbed_command}'")
+        # self._logger.info(f"Found printer command for key '{key}'. Sending '{subbed_command}'")
         self._printer.commands(subbed_command)
         
       logger_command = current_action.get("logger", False)
@@ -310,7 +311,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     # loop.run_until_complete(listener(device))
   
   def on_after_startup(self):
-    self._logger.info("Hello USB!")
+    self._logger.info("USB Keyboard loading")
     self.key_status = dict()
     self.key_discovery = {}
     self.last_key_pressed = None
@@ -328,6 +329,11 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     # self.listener.start()
     # self.listener = keyboard.Listener(on_press=on_press,on_release=on_release,suppress=False)
     # self.listener.start()
+    
+  def on_shutdown(self):
+    self._logger.info("Stopping Keyboard Listener")
+    loop = asyncio.get_event_loop()
+    loop.stop()
 
   ##~~ SettingsPlugin mixin
 
