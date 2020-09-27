@@ -270,10 +270,16 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       psu_commands = current_action.get("psu", []) # can be one of turnPSUOn turnPSUOff or togglePSU
       for psu_command in psu_commands:
         # self._logger.info(f"Found printer command for key '{key}'. Sending '{subbed_command}'")
-        response = requests.post("http://127.0.0.1:{}/plugin/psucontrol".format(self._settings.global_get(["server", "port"])), 
-                                 json={"command":psu_command},
-                                 headers={"X-Api-Key": self._settings.global_get(["api", "key"])})
-        self._logger.info(f"*---- Got response from PSU '{response}' '{response.json()}'. ----*")
+        psu_control = self._plugin_manager.get_plugin("psucontrol")
+        self._logger.info(f"psucontrol '{psu_control}'")
+        psu_control.turn_psu_on()
+        # self._logger.info(f"")
+        
+        
+        # response = requests.post("http://127.0.0.1:{}/plugin/psucontrol".format(self._settings.global_get(["server", "port"])),
+#                                  json={"command":psu_command},
+#                                  headers={"X-Api-Key": self._settings.global_get(["api", "key"])})
+#         self._logger.info(f"*---- Got response from PSU '{response}' '{response.json()}'. ----*")
         
       
       
@@ -323,6 +329,12 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
   
   def on_after_startup(self):
     self._logger.info("USB Keyboard loading")
+    
+    
+    self._plugin_manager.get_plugin("psucontrol").turn_psu_on()
+    
+    
+    
     self.key_status = dict()
     self.key_discovery = {}
     self.last_key_pressed = None
