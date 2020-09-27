@@ -14,7 +14,7 @@ plugin_package = "octoprint_usb_keyboard"
 plugin_name = "OctoPrint-Usb_keyboard"
 
 # The plugin's version. Can be overwritten within OctoPrint's internal data via __plugin_version__ in the plugin module
-plugin_version = "0.1.2"
+plugin_version = "0.1.3"
 
 # The plugin's description. Can be overwritten within OctoPrint's internal data via __plugin_description__ in the plugin
 # module
@@ -33,7 +33,7 @@ plugin_url = "https://github.com/barrettford/OctoPrint-Usb_keyboard"
 plugin_license = "AGPLv3"
 
 # Any additional requirements besides OctoPrint should be listed here
-plugin_requires = ["evdev"]# "pynput"]
+plugin_requires = ["evdev", "asyncio"]# "pynput"]
 
 ### --------------------------------------------------------------------------------------------------------------------
 ### More advanced options that you usually shouldn't have to touch follow after this point

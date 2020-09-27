@@ -5,9 +5,11 @@ import octoprint.plugin
 import octoprint.printer
 import re
 import json
+import asyncio
+
 # from pynput import keyboard
-import threading
-import sys, termios, tty, os, time
+# import threading
+# import sys, termios, tty, os, time
 from octoprint.events import Events, eventManager, all_events
 # from inputs import get_key
 # from pyhooked import Hook, KeyboardEvent, MouseEvent
@@ -42,7 +44,8 @@ def key_read_loop():
             eventManager().fire("plugin_usb_keyboard_key_event", dict(key=key_name, key_state=key_state))
       break
     except OSError as e:
-      print("Darn...", e)
+      pass
+  raise Exception("Key Read Loop Broke!")
 
 
 # If trying to use inputs
@@ -198,7 +201,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     
     
     active_profile = self._settings.get(["active_profile"])
-    # self._logger.info(f"Key '{key}' {key_state}")
+    self._logger.info(f"Key '{key}' {key_state}")
     
     commands = self._settings.get(["profiles", active_profile, "commands"])
     if not commands:
@@ -260,7 +263,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       for printer_command in printer_commands:
         subbed_command = self.variable_sub(printer_command)
         self._logger.info(f"Found printer command for key '{key}'. Sending '{subbed_command}'")
-        # self._printer.commands(subbed_command)
+        self._printer.commands(subbed_command)
         
       logger_command = current_action.get("logger", False)
       if logger_command:
@@ -278,6 +281,34 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
 
   ##~~ StartupPlugin mixin
   
+  def set_up_keyboard_listener(self):
+     # Maybe turn [2] into "hold" one day
+    
+    self._logger.info("Staring Keyboard Listener")
+    device = InputDevice('/dev/input/event1')
+    # device.grab() # prevent other processes from taking the keyboard
+    # dev.ungrab()
+
+    async def listener(device):
+      key_dict = {}
+      KEY_STATE = ["released", "pressed", "pressed"]
+      async for event in device.async_read_loop():
+        if event.type == ecodes.EV_KEY:
+          key_event = categorize(event)
+          
+          key_name = key_event.keycode
+          key_name = key_name.replace("KEY_", "")
+          key_state = KEY_STATE[key_event.keystate]
+          if key_name not in key_dict or key_dict.get(key_name) != key_state:
+            key_dict[key_name] = key_state
+            eventManager().fire("plugin_usb_keyboard_key_event", dict(key=key_name, key_state=key_state))
+
+    asyncio.run(listener(device))
+
+    # loop = asyncio.new_event_loop()
+    # asyncio.set_event_loop(loop)
+    # loop.run_until_complete(listener(device))
+  
   def on_after_startup(self):
     self._logger.info("Hello USB!")
     self.key_status = dict()
@@ -287,8 +318,12 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     self._settings.set(["key_discovery"], {})
     
     eventManager().subscribe("plugin_usb_keyboard_key_event", self._key_event)
-    self.listener = threading.Thread(target=key_read_loop, daemon=True) # Make thread a daemon thread
-    self.listener.start()
+    
+    self.set_up_keyboard_listener()
+    
+    
+    # self.listener = threading.Thread(target=key_read_loop, daemon=True) # Make thread a daemon thread
+    # self.listener.start()
     # self.listener = threading.Thread(target=keyboard_listener, daemon=True) # Make thread a daemon thread
     # self.listener.start()
     # self.listener = keyboard.Listener(on_press=on_press,on_release=on_release,suppress=False)
