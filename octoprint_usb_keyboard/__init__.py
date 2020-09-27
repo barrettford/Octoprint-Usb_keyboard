@@ -264,22 +264,20 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       printer_commands = current_action.get("printer", [])
       for printer_command in printer_commands:
         subbed_command = self.variable_sub(printer_command)
-        # self._logger.info(f"Found printer command for key '{key}'. Sending '{subbed_command}'")
+        self._logger.info(f"Found printer command for key '{key}'. Sending '{subbed_command}'")
         self._printer.commands(subbed_command)
         
       psu_commands = current_action.get("psu", []) # can be one of turnPSUOn turnPSUOff or togglePSU
       for psu_command in psu_commands:
-        # self._logger.info(f"Found printer command for key '{key}'. Sending '{subbed_command}'")
-        psu_control = self._plugin_manager.get_plugin("psucontrol")
-        self._logger.info(f"psucontrol '{psu_control}'")
-        psu_control.turn_psu_on()
-        # self._logger.info(f"")
-        
-        
-        # response = requests.post("http://127.0.0.1:{}/plugin/psucontrol".format(self._settings.global_get(["server", "port"])),
-#                                  json={"command":psu_command},
-#                                  headers={"X-Api-Key": self._settings.global_get(["api", "key"])})
-#         self._logger.info(f"*---- Got response from PSU '{response}' '{response.json()}'. ----*")
+        self._logger.info(f"Found psu command for key '{key}'. Sending '{psu_command}'")
+#         psu_control = self._plugin_manager.get_plugin("psucontrol")
+#         self._logger.info(f"psucontrol '{psu_control}'")
+#         psu_control.turn_psu_on()
+#         # self._logger.info(f"")
+        response = requests.post("http://127.0.0.1:{}/api/plugin/psucontrol".format(self._settings.global_get(["server", "port"])),
+                                 json={"command":psu_command},
+                                 headers={"X-Api-Key": self._settings.global_get(["api", "key"])})
+        self._logger.info(f"*---- Got response from PSU '{response}' '{response.text}'. ----*")
         
       
       
@@ -311,6 +309,9 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       key_dict = {}
       KEY_STATE = ["released", "pressed", "pressed"]
       async for event in device.async_read_loop():
+        if self.should_stop_polling:
+          self._logger.info("Stopping Keyboard Listener")
+          return
         if event.type == ecodes.EV_KEY:
           key_event = categorize(event)
           
@@ -328,18 +329,20 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     # loop.run_until_complete(listener(device))
   
   def on_after_startup(self):
-    self._logger.info("USB Keyboard loading")
+    # self._logger.info("USB Keyboard loading")
     
     
-    self._plugin_manager.get_plugin("psucontrol").turn_psu_on()
     
+    psucontrol = self._plugin_manager.get_plugin("psucontrol")#.turn_psu_on()
     
+    self._logger.info(f" ******** {psucontrol}")
     
     self.key_status = dict()
     self.key_discovery = {}
     self.last_key_pressed = None
     self.listening_variables = dict()
     self._settings.set(["key_discovery"], {})
+    self.should_stop_polling=False
     
     eventManager().subscribe("plugin_usb_keyboard_key_event", self._key_event)
     
@@ -354,9 +357,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     # self.listener.start()
     
   def on_shutdown(self):
-    self._logger.info("Stopping Keyboard Listener")
-    loop = asyncio.get_event_loop()
-    loop.stop()
+    self.should_stop_polling=True
 
   ##~~ SettingsPlugin mixin
 
@@ -414,7 +415,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
             
             "BACKSPACE":{"pressed":{"listen_vars":["bed","hotend"]}, "released":{"save_vars":["bed","hotend"]}},  # set temperatures for hotend and bed
             "EQUAL":{"pressed":{"printer":["M104 S<hotend>","M140 S<bed>"]}},  # rear right corner, 10x10 in
-            "ESC":{"pressed":{"psu":"getPSUState"}},
+            "ESC":{"pressed":{"psu":["turnPSUOn"]}},
           },
           "keyboard":{
             "rows":[
