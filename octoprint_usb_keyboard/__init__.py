@@ -7,6 +7,7 @@ import re
 import json
 import asyncio
 import requests
+import inspect
 
 # from pynput import keyboard
 # import threading
@@ -274,10 +275,18 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
 #         self._logger.info(f"psucontrol '{psu_control}'")
 #         psu_control.turn_psu_on()
 #         # self._logger.info(f"")
-        response = requests.post("http://127.0.0.1:{}/api/plugin/psucontrol".format(self._settings.global_get(["server", "port"])),
-                                 json={"command":psu_command},
-                                 headers={"X-Api-Key": self._settings.global_get(["api", "key"])})
-        self._logger.info(f"*---- Got response from PSU '{response}' '{response.text}'. ----*")
+        self._plugin_manager.get_plugin("psucontrol").PSUControl.turn_psu_on(self._plugin_manager.get_plugin("psucontrol").PSUControl)
+
+        # response = requests.get("http://127.0.0.1:{}/api/plugin/psucontrol".format(self._settings.global_get(["server", "port"])),
+#                                  headers={"X-Api-Key": self._settings.global_get(["api", "key"])})
+#         self._logger.info(f"*---- Got response from PSU '{response}' '{response.text}'. ----*")
+#
+#         response = requests.post("http://127.0.0.1:{}/api/plugin/psucontrol".format(self._settings.global_get(["server", "port"])),
+#                                  json={"command":psu_command},
+#                                  headers={"X-Api-Key": self._settings.global_get(["api", "key"])})
+#         self._logger.info(f"*---- Got response from PSU '{response}' '{response.text}'. ----*")
+        
+        
         
       
       
@@ -308,21 +317,24 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     async def listener(device):
       key_dict = {}
       KEY_STATE = ["released", "pressed", "pressed"]
-      async for event in device.async_read_loop():
-        if self.should_stop_polling:
-          self._logger.info("Stopping Keyboard Listener")
-          return
-        if event.type == ecodes.EV_KEY:
-          key_event = categorize(event)
+      try:
+        async for event in device.async_read_loop():
+          if event.type == ecodes.EV_KEY:
+            key_event = categorize(event)
+            
+            key_name = key_event.keycode
+            key_name = key_name.replace("KEY_", "")
+            key_state = KEY_STATE[key_event.keystate]
+            if key_name not in key_dict or key_dict.get(key_name) != key_state:
+              key_dict[key_name] = key_state
+              eventManager().fire("plugin_usb_keyboard_key_event", dict(key=key_name, key_state=key_state))
+      except asyncio.CancelledError:
+        pass
+      finally:
+        self._logger.info("Stopping Keyboard Listener")
           
-          key_name = key_event.keycode
-          key_name = key_name.replace("KEY_", "")
-          key_state = KEY_STATE[key_event.keystate]
-          if key_name not in key_dict or key_dict.get(key_name) != key_state:
-            key_dict[key_name] = key_state
-            eventManager().fire("plugin_usb_keyboard_key_event", dict(key=key_name, key_state=key_state))
 
-    asyncio.run(listener(device))
+    self.keyboard_listener_task = asyncio.run(listener(device))
 
     # loop = asyncio.new_event_loop()
     # asyncio.set_event_loop(loop)
@@ -335,7 +347,12 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     
     psucontrol = self._plugin_manager.get_plugin("psucontrol")#.turn_psu_on()
     
-    self._logger.info(f" ******** {psucontrol}")
+    # inspect.getmembers(psucontrol)
+    
+    # self._logger.info(f" ******** {psucontrol}")
+    # self._logger.info(f" ******** {inspect.getmembers(psucontrol)}")
+    self._logger.info(f" ******** {inspect.getmembers(psucontrol.PSUControl)}")
+    
     
     self.key_status = dict()
     self.key_discovery = {}
@@ -357,7 +374,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     # self.listener.start()
     
   def on_shutdown(self):
-    self.should_stop_polling=True
+    self.keyboard_listener_task.cancel()
 
   ##~~ SettingsPlugin mixin
 
