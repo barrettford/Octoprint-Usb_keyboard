@@ -198,7 +198,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     
     
     active_profile = self._settings.get(["active_profile"])
-    self._logger.info(f"Key '{key}' {key_state}")
+    # self._logger.info(f"Key '{key}' {key_state}")
     
     commands = self._settings.get(["profiles", active_profile, "commands"])
     if not commands:
@@ -229,37 +229,37 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
           saving_var = self.listening_variables.get(save_variable_command, None)
           
           if saving_var:
-            self._logger.info(f"Saving value '{saving_var}' to variable '{save_variable_command}'.")
-            self._settings.set(["profiles", active_profile, "variables", save_variable_command], saving_var)
+            # self._logger.info(f"Saving value '{saving_var}' to variable '{save_variable_command}'.")
+            # self._settings.set(["profiles", active_profile, "variables", save_variable_command], saving_var)
             # self._settings.save()
             del self.listening_variables[save_variable_command]
           else:
-            self._logger.info(f"Found nothing to save to variable '{save_variable_command}'.")
+            # self._logger.info(f"Found nothing to save to variable '{save_variable_command}'.")
             del self.listening_variables[save_variable_command]
                   
       # handle if listening variables
       if self.listening_variables:
-        self._logger.info(f"Listening for variables {self.listening_variables.keys()}.")
+        # self._logger.info(f"Listening for variables {self.listening_variables.keys()}.")
         key_values = key_actions.get("variable_values", None)
         
         if key_values:
           for variable in self.listening_variables:
             variable_value = key_values.get(variable)
             if variable_value:
-              self._logger.info(f"Found variable value for key '{key}'. Setting variable '{variable}' as value '{variable_value}'.")
+              # self._logger.info(f"Found variable value for key '{key}'. Setting variable '{variable}' as value '{variable_value}'.")
               self.listening_variables[variable] = variable_value
           
         return # if we're listening for variables, don't do anything else
         
       listen_variable_commands = current_action.get("listen_vars", [])
       for listen_variable_command in listen_variable_commands:
-        self._logger.info(f"Started listening for variable '{listen_variable_command}'.")
+        # self._logger.info(f"Started listening for variable '{listen_variable_command}'.")
         self.listening_variables[listen_variable_command] = None
       
       printer_commands = current_action.get("printer", [])
       for printer_command in printer_commands:
         subbed_command = self.variable_sub(printer_command)
-        self._logger.info(f"Found printer command for key '{key}'. Sending '{subbed_command}'")
+        # self._logger.info(f"Found printer command for key '{key}'. Sending '{subbed_command}'")
         self._printer.commands(subbed_command)
         
       logger_command = current_action.get("logger", False)
