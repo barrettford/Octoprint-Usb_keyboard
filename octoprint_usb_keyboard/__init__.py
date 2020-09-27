@@ -259,8 +259,8 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       printer_commands = current_action.get("printer", [])
       for printer_command in printer_commands:
         subbed_command = self.variable_sub(printer_command)
-        # self._logger.info(f"Found printer command for key '{key}'. Sending '{subbed_command}'")
-        self._printer.commands(subbed_command)
+        self._logger.info(f"Found printer command for key '{key}'. Sending '{subbed_command}'")
+        # self._printer.commands(subbed_command)
         
       logger_command = current_action.get("logger", False)
       if logger_command:
@@ -444,7 +444,6 @@ __plugin_pythoncompat__ = ">=3,<4" # only python 3
 #__plugin_pythoncompat__ = ">=2.7,<4" # python 2 and 3
 
 def register_custom_events(*args, **kwargs):
-  print("Registering event...")
   return ["key_event"]
 
 def __plugin_load__():
