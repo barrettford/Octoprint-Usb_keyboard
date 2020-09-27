@@ -6,6 +6,7 @@ import octoprint.printer
 import re
 import json
 import asyncio
+import requests
 
 # from pynput import keyboard
 # import threading
@@ -202,7 +203,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     
     
     active_profile = self._settings.get(["active_profile"])
-    self._logger.info(f"Key '{key}' {key_state}")
+    # self._logger.info(f"Key '{key}' {key_state}")
     
     commands = self._settings.get(["profiles", active_profile, "commands"])
     if not commands:
@@ -266,6 +267,16 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         # self._logger.info(f"Found printer command for key '{key}'. Sending '{subbed_command}'")
         self._printer.commands(subbed_command)
         
+      psu_commands = current_action.get("psu", []) # can be one of turnPSUOn turnPSUOff or togglePSU
+      for psu_command in psu_commands:
+        # self._logger.info(f"Found printer command for key '{key}'. Sending '{subbed_command}'")
+        response = requests.post("http://127.0.0.1:{}/plugin/psucontrol".format(self._settings.global_get(["server", "port"])), 
+                                 json={"command":psu_command},
+                                 headers={"X-Api-Key": self._settings.global_get(["api", "key"])})
+        self._logger.info(f"*---- Got response from PSU '{response}' '{response.json()}'. ----*")
+        
+      
+      
       logger_command = current_action.get("logger", False)
       if logger_command:
         self._logger.info(f"*---- Found logger command for key '{key}'. ----*")
@@ -391,7 +402,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
             
             "BACKSPACE":{"pressed":{"listen_vars":["bed","hotend"]}, "released":{"save_vars":["bed","hotend"]}},  # set temperatures for hotend and bed
             "EQUAL":{"pressed":{"printer":["M104 S<hotend>","M140 S<bed>"]}},  # rear right corner, 10x10 in
-            "ESC":{"pressed":{"logger":True}},
+            "ESC":{"pressed":{"psu":"getPSUState"}},
           },
           "keyboard":{
             "rows":[
