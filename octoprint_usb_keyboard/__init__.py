@@ -97,7 +97,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       # {"type":"printer", "gcode":["G0 X10 Y10 F6000"]}
       current_action_type = current_action.get("type")
       if not current_action_type:
-        self._logger.debug(f"Found action with no type! Guess we do nothing...")
+        self._logger.info(f"Found action with no type! Guess we do nothing...")
         continue
       
       # ------------------ Saving Vars -------------------
@@ -109,26 +109,26 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
           if variable in self.listening_variables: # Check that it's in there, not just as None
             saving_var = self.listening_variables[variable]
             if saving_var:
-              self._logger.debug(f"Saving value '{saving_var}' to variable '{save_variable_command}'.")
+              self._logger.info(f"Saving value '{saving_var}' to variable '{variable}'.")
               self._settings.set(["profiles", active_profile, "variables", variable], saving_var)
               # self._settings.save() #TODO figure out if I really want to save them here
             else:
-              self._logger.debug(f"Found nothing to save to variable '{save_variable_command}'.")
-            del self.listening_variables[save_variable_command]
+              self._logger.info(f"Found nothing to save to variable '{variable}'.")
+            del self.listening_variables[variable]
         continue # Go around again, nothing else to do here
         
         
       # ------------------ Listening Vars -------------------
       # handle if listening variables
       if self.listening_variables:
-        self._logger.debug(f"Listening for variables {self.listening_variables.keys()}.")
+        self._logger.info(f"Listening for variables {self.listening_variables.keys()}.")
         key_values = key_actions.get("variable_values", None)
         
         if key_values:
           for variable in self.listening_variables:
             variable_value = key_values.get(variable)
-            if variable_value:
-              self._logger.debug(f"Found variable value for key '{key}'. Setting variable '{variable}' as value '{variable_value}'.")
+            if variable_value is not None:
+              self._logger.info(f"Found variable value for key '{key}'. Setting variable '{variable}' as value '{variable_value}'.")
               self.listening_variables[variable] = variable_value
         continue # Go around again, nothing else to do here
         
@@ -139,8 +139,8 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         # "variables":["distance", "hotend", "bed"]
         variables = current_action.get("variables", [])
         for variable in variables:
-          self._logger.debug(f"Started listening for variable '{variable}'.")
-          self.listening_variables[listen_variable_command] = None
+          self._logger.info(f"Started listening for variable '{variable}'.")
+          self.listening_variables[variable] = None
         continue # Go around again, nothing else to do here
       
       
@@ -148,11 +148,11 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       # {"type":"printer", "gcode":["G0 X10 Y10 F6000"]}
       if current_action_type == "printer":
         # "gcode":["G0 X10 Y10 F6000"]
-        gcodes = current_action.get("gcode", [])
-        if gcodes:
-          subbed_gcodes = [self.variable_sub(gcode) for gcode in gcodes]
-          self._logger.debug(f"Found printer commands for key '{key}'. Sending '{subbed_gcodes}'")
-          self._printer.commands(subbed_gcode)
+        gcode_commands = current_action.get("gcode", [])
+        if gcode_commands:
+          subbed_gcode_commands = [self.variable_sub(gcode) for gcode in gcode_commands]
+          self._logger.info(f"Found printer commands for key '{key}'. Sending '{subbed_gcode_commands}'")
+          self._printer.commands(subbed_gcode_commands)
         continue # Go around again, nothing else to do here
         
         
@@ -161,13 +161,11 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       if current_action_type == "psu":
         # "command":"toggle, "can_trigger_while_hot":False, "hotend_max":        
         PSU_STATES = {"on":1, "off":-1, "toggle":0}
-        command = current_action.get("command")
+        psu_command = current_action.get("command")
         
-        if command and command in PSU_STATES:
+        if psu_command and psu_command in PSU_STATES:
           psucontrol_info = self._plugin_manager.get_plugin_info("psucontrol", require_enabled=True)
-          if psucontrol_info:
-            self._logger.debug(f"Found psu command for key '{key}'. Sending '{psu_command}'")
-            
+          if psucontrol_info:            
             psucontrol = self._plugin_manager.get_plugin("psucontrol")
             psucontrol_info_impl = psucontrol_info.get_implementation()
 
@@ -176,19 +174,27 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
             desired_state = PSU_STATES[psu_command]
         
             if not psu_is_on and desired_state > -1:
+              self._logger.info(f"Found psu command for key '{key}'. Sending '{psu_command}'")
               psucontrol.PSUControl.turn_psu_on(psucontrol_info_impl)
             elif psu_is_on and desired_state < 1:
-              can_trigger_while_hot = current_action.get("can_trigger_while_hot", False)
-              hotend_max = current_action.get("hotend_max", 48)
-              tools_cool_enough_to_turn_off_psu = can_trigger_while_hot
+              tools_cool_enough_to_turn_off_psu = can_trigger_while_hot = current_action.get("can_trigger_while_hot", False)
+              hotend_max = current_action.get("hotend_max", 50)
               if not can_trigger_while_hot:
                 printer_temps = self._printer.get_current_temperatures()
+                self._logger.info(f"printer_temps '{printer_temps}'")
                 for key, value in printer_temps.items():
+                  self._logger.info(f"tool {key} '{value}'")
+                  
                   if key.startswith("tool") and value.get("actual", 0) > hotend_max:
+                    self._logger.info(f"tool {key} too hot")
+                    
                     tools_cool_enough_to_turn_off_psu = False
                     break;
               if tools_cool_enough_to_turn_off_psu:
+                self._logger.info(f"Found psu command for key '{key}'. Sending '{psu_command}'")
                 psucontrol.PSUControl.turn_psu_off(psucontrol_info_impl)
+              else:
+                self._logger.info(f"Found psu command for key '{key}'. User-defined max hotend temp '{hotend_max}' exceeded!")
             else:
               self._logger.error(f"Should Never Get Here")
           else:
@@ -231,7 +237,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         
       
       
-      l# ogger_command = current_action.get("logger", False)
+      #logger_command = current_action.get("logger", False)
 #       if logger_command:
 #         self._logger.info(f"*---- Found logger command for key '{key}'. ----*")
 #         self._logger.info(f"Current Key Detection Binding '{self._settings.get(['key_discovery'])}'")
@@ -248,7 +254,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
   ##~~ StartupPlugin mixin
   
   def on_after_startup(self):
-    self._logger.debug("USB Keyboard loading")
+    self._logger.info("USB Keyboard loading")
     
     self.key_status = dict()
     self.key_discovery = {}
@@ -274,7 +280,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
   def on_shutdown(self):
     self._logger.info("Stopping Keyboard Listener")
     self.listener.raise_exception()
-    self.listener.join()
+    self.listener.join(0.1)
 
   ##~~ SettingsPlugin mixin
 
@@ -308,7 +314,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
             
             # "BACKSPACE":{"pressed":{"listen_vars":["bed","hotend"]}, "released":{"save_vars":["bed","hotend"]}},  # set temperatures for hotend and bed
             "EQUAL":  {"pressed": [{"type":"printer", "gcode":["M104 S<hotend>","M140 S<bed>"]}]                                             },  # set hotend and bed
-            "ESC":    {"pressed": [{"type":"psu", "command":"toggle", "can_trigger_while_hot":False, "hotend_max":48 }]                      }
+            "ESC":    {"pressed": [{"type":"psu", "command":"toggle", "can_trigger_while_hot":False, "hotend_max":50 }]                      }
           },
           "keyboard":{
             "rows":[

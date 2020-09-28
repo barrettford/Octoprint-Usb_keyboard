@@ -11,7 +11,7 @@ from octoprint.events import Events, eventManager, all_events
    
 class KeyboardListenerThread(threading.Thread): 
     def __init__(self, name): 
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, daemon=True)
         self.name = name 
               
     def run(self): 
@@ -30,8 +30,6 @@ class KeyboardListenerThread(threading.Thread):
               if key_name not in key_dict or key_dict.get(key_name) != key_state:
                 key_dict[key_name] = key_state
                 eventManager().fire("plugin_usb_keyboard_key_event", dict(key=key_name, key_state=key_state))
-        except SystemExit:
-          pass
         finally:
           # device.ungrab(
           device.close()
