@@ -8,7 +8,7 @@ import json
 import asyncio
 import requests
 import inspect
-from pprint import pformat
+from .killable_thread import thread_with_exception 
 
 # from pynput import keyboard
 # import threading
@@ -277,11 +277,22 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
 #         psu_control.turn_psu_on()
 #         # self._logger.info(f"")
 
-    
+        
     
         psucontrol = self._plugin_manager.get_plugin("psucontrol")
         psucontrol_info = self._plugin_manager.get_plugin_info("psucontrol", require_enabled=True)
-        psucontrol.PSUControl.turn_psu_on(psucontrol_info.get_implementation())
+        psucontrol_info_impl = psucontrol_info.get_implementation()
+        
+        
+        self._logger.info(f"PSU is currently {psucontrol_info_impl.isPSUOn}")
+        
+        
+        psucontrol.PSUControl.turn_psu_on(psucontrol_info_impl)
+        
+        
+        self._logger.info(f"PSU is now {psucontrol_info_impl.isPSUOn}")
+        
+        
         
         
         # inspect.getmembers(psucontrol)
@@ -289,14 +300,14 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         # self._logger.info(f" ******** {psucontrol}")
         # self._logger.info(f" ******** {inspect.getmembers(psucontrol)}")
         self._logger.info(f" ******** PSUControl info implementation {inspect.getmembers(psucontrol_info.get_implementation())} *******")
-        self._logger.info(f" ******** PSUControl info implementation {inspect.getmembers(pformat(psucontrol_info.get_implementation()))} *******")
+        # self._logger.info(f" ******** PSUControl info implementation {inspect.getmembers(pformat(psucontrol_info.get_implementation()))} *******")
         
         
         # self._logger.info(f" ******** PSUControl class {inspect.getmembers(psucontrol.PSUControl)}")
         
 
 
-        psucontrol.PSUControl.turn_psu_on(psucontrol_info.get_implementation())
+        # psucontrol.PSUControl.turn_psu_on(psucontrol_info.get_implementation())
 
         # response = requests.get("http://127.0.0.1:{}/api/plugin/psucontrol".format(self._settings.global_get(["server", "port"])),
 #                                  headers={"X-Api-Key": self._settings.global_get(["api", "key"])})
@@ -358,6 +369,8 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
 
     # self.keyboard_listener_task = asyncio.run(listener(device))
     
+    
+    
     loop = asyncio.new_event_loop()
     loop.run_until_complete(listener(target_device))
     
@@ -381,7 +394,10 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     
     eventManager().subscribe("plugin_usb_keyboard_key_event", self._key_event)
     
-    self.set_up_keyboard_listener()
+    # asyncio.run(self.set_up_keyboard_listener())
+    self._logger.info("Starting Keyboard Listener")
+    self.listener = thread_with_exception('USB Keyboard Listener Thread')
+    self.listener.start()
     
     
     # self.listener = threading.Thread(target=key_read_loop, daemon=True) # Make thread a daemon thread
@@ -393,10 +409,11 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     
   def on_shutdown(self):
     self._logger.info("Stopping Keyboard Listener")
-    
-    loop = asyncio.get_event_loop()
-    loop.stop()
-    loop.close()
+    self.listener.raise_exception()
+    self.listener.join()
+    # loop = asyncio.get_event_loop()
+    # loop.stop()
+    # loop.close()
 
   ##~~ SettingsPlugin mixin
 
