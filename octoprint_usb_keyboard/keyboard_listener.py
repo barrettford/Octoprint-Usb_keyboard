@@ -9,7 +9,7 @@ from evdev import InputDevice, categorize, ecodes
 from octoprint.events import Events, eventManager, all_events
 
    
-class thread_with_exception(threading.Thread): 
+class KeyboardListenerThread(threading.Thread): 
     def __init__(self, name): 
         threading.Thread.__init__(self)
         self.name = name 

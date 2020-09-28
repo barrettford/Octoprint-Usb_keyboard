@@ -5,141 +5,14 @@ import octoprint.plugin
 import octoprint.printer
 import re
 import json
-import asyncio
 import requests
 import inspect
-from .killable_thread import thread_with_exception 
-
-# from pynput import keyboard
-# import threading
-# import sys, termios, tty, os, time
+from .keyboard_listener import KeyboardListenerThread 
 from octoprint.events import Events, eventManager, all_events
-# from inputs import get_key
-# from pyhooked import Hook, KeyboardEvent, MouseEvent
-from evdev import InputDevice, categorize, ecodes
 
 
 
 
-
-key_dict = {}
-
-# If trying to use evdev
-def key_read_loop():
-  KEY_STATE = ["released", "pressed", "pressed"] # Maybe turn [2] into "hold" one day
-  key_dict = {}
-  
-  for x in range(1, 4):
-    try:
-      path = "/dev/input/event{}".format(x)
-      device = InputDevice(path) # my keyboard
-      for event in device.read_loop():
-        if event.type == ecodes.EV_KEY:
-          key_event = categorize(event)
-          
-          key_name = key_event.keycode
-          key_name = key_name.replace("KEY_", "")
-          key_state = KEY_STATE[key_event.keystate]
-          if key_dict.get(key_name) == key_state:
-            return
-          else:
-            key_dict[key_name] = key_state
-            eventManager().fire("plugin_usb_keyboard_key_event", dict(key=key_name, key_state=key_state))
-      break
-    except OSError as e:
-      pass
-  raise Exception("Key Read Loop Broke!")
-
-
-# If trying to use inputs
-def keyboard_listener():
-  KEY_STATE = ["released", "pressed", "pressed"] # Maybe turn this into "held" one day
-  key_dict = {}
-  
-  while(1):    
-    try:
-      # events = get_key()
-      if events:
-        # print(f"****** EVENTS {len(events)}")
-        
-        # for event in events[:2]:
-        event = events[1]
-        if event.ev_type == "Key":
-          # print("**** Event Type:") # Key for pressing events
-      #     print(event.ev_type)
-          
-          # print("**** Event Code:") # Name of Key, starts with KEY_
-          # print(event.code)
-          # print("**** Event State:") # 1 = pressed, 2 = held, 0 = released
-          # print(event.state)
-          # print(event.ev_type, event.code, event.state)
-          # print(event.code)
-          key_name = event.code
-          print(f"event state {event.state}")
-          
-          if event.state > 1:
-            # print("holding")
-            continue
-
-          key_state = KEY_STATE[event.state]
-          if key_dict.get(key_name) == key_state:
-            return
-          else:
-            key_dict[key_name] = key_state
-            eventManager().fire("plugin_usb_keyboard_key_event", dict(key=key_name, key_state=key_state))
-    except IOError as e:
-      print(e)
-    time.sleep(0.001)
-
-# If trying to use pynput
-def on_key(key, key_state, key_dict = key_dict):
-  try:
-    # print('alphanumeric key {0} pressed'.format(key.char))
-    # repr(key).len() > 2 and 
-    if key and key.char and "Key." in key.char:
-      key_string = key.char
-    else:
-      key_string = repr(key)
-      if key_string:
-        key_string = key_string.replace("'", "")
-        key_string = key_string.replace('""', """'""")
-
-    # key_string = key.char if "Key." in key.char else repr(key)[1:-1]
-    
-    # print(f"WHAT IS THIS normal '{key}' vs '{key_string}'")
-  except AttributeError:
-    # print('special key {0} pressed'.format(key))
-    key_string =  f"{key}"
-    # print(f"WHAT IS THIS special '{key}' vs '{key_string}'")
-  
-  key_string = key_string.replace("Key.", "")
-  
-  
-  
-  
-  
-  
-  if key_dict.get(key_string) == key_state:
-    return
-  else:
-    key_dict[key_string] = key_state
-    eventManager().fire("plugin_usb_keyboard_key_event", dict(key=key_string, key_state=key_state))
-    # eventManager().fire("SomeOtherUSBEvent", dict(key=key_string, key_state=key_state))
-
-
-def on_press(key):  # The function that's called when a key is pressed
-  # print(f"key [{key_string}] pressed")
-  on_key(key, "pressed")
-  
-  
-  
-  # eventManager().fire("Usb_keyboard_key_event", dict(key=key, action="pressed"))
-  # print("Key pressed: {0}".format(key))
-
-def on_release(key):  # The function that's called when a key is released
-  on_key(key, "released")
-  # eventManager().fire("Usb_keyboard_key_event", dict(key=key, action="released"))
-  # print("Key released: {0}".format(key))
 
 class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
                          octoprint.plugin.ShutdownPlugin,
@@ -153,16 +26,6 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
   
   # def on_event(self, event, payload):
   #   self._logger.info(f"********* ON EVENT ********** {event}")
-    # if event == "Usb_keyboard_key_event":
-#       key = payload["key"]
-#       action = payload["action"]
-#
-#       if self.key_status.get(key) == action:
-#         return
-#       else:
-#         self.key_status[key] = action
-#         self._logger.info(f"Key '{key}' {action}")
-    
     
   def variable_sub(self, command):
     if not command:
@@ -178,7 +41,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         active_profile = self._settings.get(["active_profile"])
         setting_var = self._settings.get(["profiles", active_profile, "variables", clean_variable], merged=False)
         if setting_var:
-          sub_command = sub_command.replace(variable, setting_var)
+          sub_command = sub_command.replace(variable, str(setting_var))
         else:
           self._logger.error(f"No value for variable '{clean_variable}'... Is this intentional?")
           return None
@@ -186,6 +49,12 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     
   def send_key_discovery(self, data):
     self._plugin_manager.send_plugin_message(self._identifier, data)
+    
+    
+    
+    
+    
+  
 
   ## It's better to subscribe to our event than to get them all and ignore most.
   def _key_event(self, event, payload):
@@ -212,101 +81,141 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       # self._logger.info("Commands Empty......")
       return
       
+    # "KP1":    {"pressed": [{"type":"printer", "gcode":["G0 X10 Y10 F6000"]}],                  "variable_values": {"distance":"1"}     }
       
     key_actions = commands.get(key)
-    # print(f"commands '{commands}'")
     if not key_actions:
       return
-    
-    # print(f"key_actions '{key_actions}'")
-    
-    current_action = key_actions.get(key_state, {})
-    # print(f"current_action '{current_action}'")
-    
-    if current_action:
-      save_variable_commands = current_action.get("save_vars", [])
-      # print(f"save_variable_commands '{save_variable_commands}'")
       
-      for save_variable_command in save_variable_commands:
-        # print(f"save_variable_command '{save_variable_command}'")
-        # print(f"self.listening_variables '{self.listening_variables}'")
+    # {"pressed": [{"type":"printer", "gcode":["G0 X10 Y10 F6000"]}],                  "variable_values": {"distance":"1"}
+    
+    
+    state_key_actions = key_actions.get(key_state, {})
+    #[{"type":"printer", "gcode":["G0 X10 Y10 F6000"]}, {"type":"printer", "gcode":["G0 X10 Y10 F6000"]}]
+    
+    for current_action in state_key_actions:
+      # {"type":"printer", "gcode":["G0 X10 Y10 F6000"]}
+      current_action_type = current_action.get("type")
+      if not current_action_type:
+        self._logger.debug(f"Found action with no type! Guess we do nothing...")
+        continue
+      
+      # ------------------ Saving Vars -------------------
+      # {"type":"save_vars",   "variables":["distance", "hotend", "bed"]}
+      if current_action_type == "save_vars":
+        variables = current_action.get("variables", [])
+        # "variables":["distance", "hotend", "bed"]}
+        for variable in variables:
+          if variable in self.listening_variables: # Check that it's in there, not just as None
+            saving_var = self.listening_variables[variable]
+            if saving_var:
+              self._logger.debug(f"Saving value '{saving_var}' to variable '{save_variable_command}'.")
+              self._settings.set(["profiles", active_profile, "variables", variable], saving_var)
+              # self._settings.save() #TODO figure out if I really want to save them here
+            else:
+              self._logger.debug(f"Found nothing to save to variable '{save_variable_command}'.")
+            del self.listening_variables[save_variable_command]
+        continue # Go around again, nothing else to do here
         
-        if save_variable_command in self.listening_variables:
-          
-          saving_var = self.listening_variables.get(save_variable_command, None)
-          
-          if saving_var:
-            # self._logger.info(f"Saving value '{saving_var}' to variable '{save_variable_command}'.")
-            self._settings.set(["profiles", active_profile, "variables", save_variable_command], saving_var)
-            # self._settings.save()
-            del self.listening_variables[save_variable_command]
-          else:
-            # self._logger.info(f"Found nothing to save to variable '{save_variable_command}'.")
-            del self.listening_variables[save_variable_command]
-                  
+        
+      # ------------------ Listening Vars -------------------
       # handle if listening variables
       if self.listening_variables:
-        # self._logger.info(f"Listening for variables {self.listening_variables.keys()}.")
+        self._logger.debug(f"Listening for variables {self.listening_variables.keys()}.")
         key_values = key_actions.get("variable_values", None)
         
         if key_values:
           for variable in self.listening_variables:
             variable_value = key_values.get(variable)
             if variable_value:
-              # self._logger.info(f"Found variable value for key '{key}'. Setting variable '{variable}' as value '{variable_value}'.")
+              self._logger.debug(f"Found variable value for key '{key}'. Setting variable '{variable}' as value '{variable_value}'.")
               self.listening_variables[variable] = variable_value
-          
-        return # if we're listening for variables, don't do anything else
+        continue # Go around again, nothing else to do here
         
-      listen_variable_commands = current_action.get("listen_vars", [])
-      for listen_variable_command in listen_variable_commands:
-        # self._logger.info(f"Started listening for variable '{listen_variable_command}'.")
-        self.listening_variables[listen_variable_command] = None
+        
+      # ------------------ Start Listening Vars -------------------
+      # {"type":"listen_vars", "variables":["distance", "hotend", "bed"]}
+      if current_action_type == "listen_vars":
+        # "variables":["distance", "hotend", "bed"]
+        variables = current_action.get("variables", [])
+        for variable in variables:
+          self._logger.debug(f"Started listening for variable '{variable}'.")
+          self.listening_variables[listen_variable_command] = None
+        continue # Go around again, nothing else to do here
       
-      printer_commands = current_action.get("printer", [])
-      for printer_command in printer_commands:
-        subbed_command = self.variable_sub(printer_command)
-        self._logger.info(f"Found printer command for key '{key}'. Sending '{subbed_command}'")
-        self._printer.commands(subbed_command)
+      
+      # ------------------ Printer -------------------
+      # {"type":"printer", "gcode":["G0 X10 Y10 F6000"]}
+      if current_action_type == "printer":
+        # "gcode":["G0 X10 Y10 F6000"]
+        gcodes = current_action.get("gcode", [])
+        if gcodes:
+          subbed_gcodes = [self.variable_sub(gcode) for gcode in gcodes]
+          self._logger.debug(f"Found printer commands for key '{key}'. Sending '{subbed_gcodes}'")
+          self._printer.commands(subbed_gcode)
+        continue # Go around again, nothing else to do here
         
-      psu_commands = current_action.get("psu", []) # can be one of turnPSUOn turnPSUOff or togglePSU
-      for psu_command in psu_commands:
-        self._logger.info(f"Found psu command for key '{key}'. Sending '{psu_command}'")
-#         psu_control = self._plugin_manager.get_plugin("psucontrol")
-#         self._logger.info(f"psucontrol '{psu_control}'")
-#         psu_control.turn_psu_on()
-#         # self._logger.info(f"")
+        
+      # ------------------ PSU Control -------------------
+      # {"type":"psu", "command":"toggle"}
+      if current_action_type == "psu":
+        # "command":"toggle, "can_trigger_while_hot":False, "hotend_max":        
+        PSU_STATES = {"on":1, "off":-1, "toggle":0}
+        command = current_action.get("command")
+        
+        if command and command in PSU_STATES:
+          psucontrol_info = self._plugin_manager.get_plugin_info("psucontrol", require_enabled=True)
+          if psucontrol_info:
+            self._logger.debug(f"Found psu command for key '{key}'. Sending '{psu_command}'")
+            
+            psucontrol = self._plugin_manager.get_plugin("psucontrol")
+            psucontrol_info_impl = psucontrol_info.get_implementation()
+
+            psu_is_on = psucontrol_info_impl.isPSUOn
+        
+            desired_state = PSU_STATES[psu_command]
+        
+            if not psu_is_on and desired_state > -1:
+              psucontrol.PSUControl.turn_psu_on(psucontrol_info_impl)
+            elif psu_is_on and desired_state < 1:
+              can_trigger_while_hot = current_action.get("can_trigger_while_hot", False)
+              hotend_max = current_action.get("hotend_max", 48)
+              tools_cool_enough_to_turn_off_psu = can_trigger_while_hot
+              if not can_trigger_while_hot:
+                printer_temps = self._printer.get_current_temperatures()
+                for key, value in printer_temps.items():
+                  if key.startswith("tool") and value.get("actual", 0) > hotend_max:
+                    tools_cool_enough_to_turn_off_psu = False
+                    break;
+              if tools_cool_enough_to_turn_off_psu:
+                psucontrol.PSUControl.turn_psu_off(psucontrol_info_impl)
+            else:
+              self._logger.error(f"Should Never Get Here")
+          else:
+            self._logger.error(f"PSU Control plugin is Disabled or Not Installed!")
 
         
-    
-        psucontrol = self._plugin_manager.get_plugin("psucontrol")
-        psucontrol_info = self._plugin_manager.get_plugin_info("psucontrol", require_enabled=True)
-        psucontrol_info_impl = psucontrol_info.get_implementation()
+            #
+      # plugin_api_commands = current_action.get("plugin_api", [])
+      # for plugin_api_command in plugin_api_commands:
+      #   plugin_id = plugin_api_command.get("plugin")
+      #   if plugin_id:
+      #     plugin_info = self._plugin_manager.get_plugin_info(plugin_id, require_enabled=True)
+      #   if not plugin_info:
+      #     self._logger.error(f"Plugin {plugin_id} is Disabled or Not Installed!")
+      #
+      #   method = plugin_api_command.get("method", "")
+      #   method = method.uppercase
+      #
+      #
+      #   if method == "POST":
+      #     response = requests.get(f"http://127.0.0.1:{self._settings.global_get(['server', 'port'])}/api/plugin/{plugin_id}",
+      #                             headers={"X-Api-Key": self._settings.global_get(["api", "key"])})
+      #   elif method == "GET":
+      #     response = requests.post(f"http://127.0.0.1:{self._settings.global_get(['server', 'port'])}/api/plugin/{plugin_id}",
+      #                              json={"command":psu_command, "data":},
+      #                              headers={"X-Api-Key": self._settings.global_get(["api", "key"])})
         
-        
-        self._logger.info(f"PSU is currently {psucontrol_info_impl.isPSUOn}")
-        
-        
-        psucontrol.PSUControl.turn_psu_on(psucontrol_info_impl)
-        
-        
-        self._logger.info(f"PSU is now {psucontrol_info_impl.isPSUOn}")
-        
-        
-        
-        
-        # inspect.getmembers(psucontrol)
-        
-        # self._logger.info(f" ******** {psucontrol}")
-        # self._logger.info(f" ******** {inspect.getmembers(psucontrol)}")
-        self._logger.info(f" ******** PSUControl info implementation {inspect.getmembers(psucontrol_info.get_implementation())} *******")
-        # self._logger.info(f" ******** PSUControl info implementation {inspect.getmembers(pformat(psucontrol_info.get_implementation()))} *******")
-        
-        
-        # self._logger.info(f" ******** PSUControl class {inspect.getmembers(psucontrol.PSUControl)}")
-        
-
-
         # psucontrol.PSUControl.turn_psu_on(psucontrol_info.get_implementation())
 
         # response = requests.get("http://127.0.0.1:{}/api/plugin/psucontrol".format(self._settings.global_get(["server", "port"])),
@@ -322,68 +231,24 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         
       
       
-      logger_command = current_action.get("logger", False)
-      if logger_command:
-        self._logger.info(f"*---- Found logger command for key '{key}'. ----*")
-        self._logger.info(f"Current Key Detection Binding '{self._settings.get(['key_discovery'])}'")
-        self._logger.info(f"Current Setting for variables: {self._settings.get(['profiles', active_profile, 'variables'])}")
-        self._logger.info(f"Current Setting for commands: {commands}")
-        self._logger.info(f"Logging value of keyboard.")
-        i = 0
-        for row in self._settings.get(['profiles', active_profile, 'keyboard', 'rows']):
-          self._logger.info(f"Current Setting for {i}: {row['keys']}")
-          i = i + 1
+      l# ogger_command = current_action.get("logger", False)
+#       if logger_command:
+#         self._logger.info(f"*---- Found logger command for key '{key}'. ----*")
+#         self._logger.info(f"Current Key Detection Binding '{self._settings.get(['key_discovery'])}'")
+#         self._logger.info(f"Current Setting for variables: {self._settings.get(['profiles', active_profile, 'variables'])}")
+#         self._logger.info(f"Current Setting for commands: {commands}")
+#         self._logger.info(f"Logging value of keyboard.")
+#         i = 0
+#         for row in self._settings.get(['profiles', active_profile, 'keyboard', 'rows']):
+#           self._logger.info(f"Current Setting for {i}: {row['keys']}")
+#           i = i + 1
         
 
 
   ##~~ StartupPlugin mixin
   
-  def set_up_keyboard_listener(self):
-     # Maybe turn [2] into "hold" one day
-    
-    self._logger.info("Starting Keyboard Listener")
-    target_device = InputDevice('/dev/input/event1')
-    # device.grab() # prevent other processes from taking the keyboard
-    # dev.ungrab()
-
-    async def listener(device):
-      self._logger.info("Started Keyboard Listener")
-      key_dict = {}
-      KEY_STATE = ["released", "pressed", "pressed"]
-      try:
-        async for event in device.async_read_loop():
-          if event.type == ecodes.EV_KEY:
-            key_event = categorize(event)
-            
-            key_name = key_event.keycode
-            key_name = key_name.replace("KEY_", "")
-            key_state = KEY_STATE[key_event.keystate]
-            if key_name not in key_dict or key_dict.get(key_name) != key_state:
-              key_dict[key_name] = key_state
-              eventManager().fire("plugin_usb_keyboard_key_event", dict(key=key_name, key_state=key_state))
-      except asyncio.CancelledError:
-        pass
-      finally:
-        self._logger.info("Stopped Keyboard Listener")
-          
-
-    # self.keyboard_listener_task = asyncio.run(listener(device))
-    
-    
-    
-    loop = asyncio.new_event_loop()
-    loop.run_until_complete(listener(target_device))
-    
-    
-
-    # loop = asyncio.new_event_loop()
-    # asyncio.set_event_loop(loop)
-    # loop.run_until_complete(listener(device))
-  
   def on_after_startup(self):
-    # self._logger.info("USB Keyboard loading")
-    
-
+    self._logger.debug("USB Keyboard loading")
     
     self.key_status = dict()
     self.key_discovery = {}
@@ -394,9 +259,8 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     
     eventManager().subscribe("plugin_usb_keyboard_key_event", self._key_event)
     
-    # asyncio.run(self.set_up_keyboard_listener())
     self._logger.info("Starting Keyboard Listener")
-    self.listener = thread_with_exception('USB Keyboard Listener Thread')
+    self.listener = KeyboardListenerThread('USB Keyboard Listener Thread')
     self.listener.start()
     
     
@@ -411,9 +275,6 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     self._logger.info("Stopping Keyboard Listener")
     self.listener.raise_exception()
     self.listener.join()
-    # loop = asyncio.get_event_loop()
-    # loop.stop()
-    # loop.close()
 
   ##~~ SettingsPlugin mixin
 
@@ -426,27 +287,28 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         "default":{
           "commands":{
             
-            "KP0":{"pressed":{"printer":["G28 X Y"]}, "variable_values":{"distance":"0.1", "bed":"0", "hotend":"0"}},  # homing x, y
-            "KPDOT":{"pressed":{"listen_vars":["distance", "hotend", "bed"]}, "released":{"save_vars":["distance", "hotend", "bed"]}},  # making this my variable modifier
-            "KPENTER":{"pressed":{"printer":["G28 Z"]}}, # homing z
+            "KPDOT":  {"pressed": [{"type":"listen_vars", "variables":["distance", "hotend", "bed"]}],
+                      "released": [{"type":"save_vars",   "variables":["distance", "hotend", "bed"]}]
+            },  # making this my variable modifier
+            "KPENTER":{"pressed": [{"type":"printer", "gcode":["G28 Z"]}]}, # homing z
             
-            "KP1":{"pressed":{"printer":["G0 X10 Y10 F6000"]}, "variable_values":{"distance":"1"}},  # front left corner, 10x10 in
-            "KP2":{"pressed":{"printer":["G91","G0 Y-<distance> F6000","G90"]}, "variable_values":{"distance":"10"}},  # move south
-            "KP3":{"pressed":{"printer":["G0 X290 Y10 F6000"]}, "variable_values":{"distance":"100"}},  # front right corner, 10x10 in
-            "KP4":{"pressed":{"printer":["G91","G0 X-<distance> F6000","G90"]}, "variable_values":{"bed":"0"}},  # move west
-            "KP5":{"pressed":{"printer":["G0 X150 Y150 F6000"]}, "variable_values":{"bed":"50"}},  # center
-            "KP6":{"pressed":{"printer":["G91","G0 X+<distance> F6000","G90"]}, "variable_values":{"bed":"60"}},  # move east
-            "KP7":{"pressed":{"printer":["G0 X10 Y290 F6000"]}, "variable_values":{"hotend":"0"}},  # rear left corner, 10x10 in
-            "KP8":{"pressed":{"printer":["G91","G0 Y+<distance> F6000","G90"]}, "variable_values":{"hotend":"205"}},  # move north
-            "KP9":{"pressed":{"printer":["G0 X290 Y290 F6000"]}, "variable_values":{"hotend":"210"}},  # rear right corner, 10x10 in
-            
-            "KPPLUS":{"pressed":{"printer":["G91","G0 Z-<distance> F300","G90"]}},  # move down
-            "KPMINUS":{"pressed":{"printer":["G91","G0 Z+<distance> F300","G90"]}},  # move up
+            "KP0":    {"pressed": [{"type":"printer", "gcode":["G28 X Y"]}],                           "variable_values": {"distance":0.1}   },  # homing x, y
+            "KP1":    {"pressed": [{"type":"printer", "gcode":["G0 X10 Y10 F6000"]}],                  "variable_values": {"distance":1}     },  # front left corner, 10x10 in
+            "KP2":    {"pressed": [{"type":"printer", "gcode":["G91","G0 Y-<distance> F6000","G90"]}], "variable_values": {"distance":10}    },  # move south
+            "KP3":    {"pressed": [{"type":"printer", "gcode":["G0 X290 Y10 F6000"]}],                 "variable_values": {"distance":100}   },  # front right corner, 10x10 in
+            "KP4":    {"pressed": [{"type":"printer", "gcode":["G91","G0 X-<distance> F6000","G90"]}], "variable_values": {"bed":0}          },  # move west
+            "KP5":    {"pressed": [{"type":"printer", "gcode":["G0 X150 Y150 F6000"]}],                "variable_values": {"bed":50}         },  # center
+            "KP6":    {"pressed": [{"type":"printer", "gcode":["G91","G0 X+<distance> F6000","G90"]}], "variable_values": {"bed":60}         },  # move east
+            "KP7":    {"pressed": [{"type":"printer", "gcode":["G0 X10 Y290 F6000"]}],                 "variable_values": {"hotend":0}       },  # rear left corner, 10x10 in
+            "KP8":    {"pressed": [{"type":"printer", "gcode":["G91","G0 Y+<distance> F6000","G90"]}], "variable_values": {"hotend":205}     },  # move north
+            "KP9":    {"pressed": [{"type":"printer", "gcode":["G0 X290 Y290 F6000"]}],                "variable_values": {"hotend":210}     },  # rear right corner, 10x10 in
+            "KPPLUS": {"pressed": [{"type":"printer", "gcode":["G91","G0 Z-<distance> F300","G90"]}]                                         },  # move down
+            "KPMINUS":{"pressed": [{"type":"printer", "gcode":["G91","G0 Z+<distance> F300","G90"]}]                                         },  # move up
             
             
             # "BACKSPACE":{"pressed":{"listen_vars":["bed","hotend"]}, "released":{"save_vars":["bed","hotend"]}},  # set temperatures for hotend and bed
-            "EQUAL":{"pressed":{"printer":["M104 S<hotend>","M140 S<bed>"]}},  # set hotend and bed
-            "ESC":{"pressed":{"psu":["turnPSUOn"]}},
+            "EQUAL":  {"pressed": [{"type":"printer", "gcode":["M104 S<hotend>","M140 S<bed>"]}]                                             },  # set hotend and bed
+            "ESC":    {"pressed": [{"type":"psu", "command":"toggle", "can_trigger_while_hot":False, "hotend_max":48 }]                      }
           },
           "keyboard":{
             "rows":[
@@ -530,7 +392,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
 # If you want your plugin to be registered within OctoPrint under a different name than what you defined in setup.py
 # ("OctoPrint-PluginSkeleton"), you may define that here. Same goes for the other metadata derived from setup.py that
 # can be overwritten via __plugin_xyz__ control properties. See the documentation for that.
-__plugin_name__ = "USB Keyboard Plugin"
+__plugin_name__ = "USB Keyboard"
 
 # Starting with OctoPrint 1.4.0 OctoPrint will also support to run under Python 3 in addition to the deprecated
 # Python 2. New plugins should make sure to run under both versions for now. Uncomment one of the following
