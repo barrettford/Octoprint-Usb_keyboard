@@ -40,7 +40,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         # see https://github.com/OctoPrint/OctoPrint/blob/3ab84ed7e4c3aaaf71fe0f184b465f25d689f929/src/octoprint/plugin/__init__.py#L255
         active_profile = self._settings.get(["active_profile"])
         setting_var = self._settings.get(["profiles", active_profile, "variables", clean_variable], merged=False)
-        if setting_var:
+        if setting_var is not None:
           sub_command = sub_command.replace(variable, str(setting_var))
         else:
           self._logger.error(f"No value for variable '{clean_variable}'... Is this intentional?")
@@ -49,11 +49,6 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     
   def send_key_discovery(self, data):
     self._plugin_manager.send_plugin_message(self._identifier, data)
-    
-    
-    
-    
-    
   
 
   ## It's better to subscribe to our event than to get them all and ignore most.
@@ -108,7 +103,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         for variable in variables:
           if variable in self.listening_variables: # Check that it's in there, not just as None
             saving_var = self.listening_variables[variable]
-            if saving_var:
+            if saving_var is not None:
               self._logger.info(f"Saving value '{saving_var}' to variable '{variable}'.")
               self._settings.set(["profiles", active_profile, "variables", variable], saving_var)
               # self._settings.save() #TODO figure out if I really want to save them here
@@ -177,16 +172,17 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
               self._logger.info(f"Found psu command for key '{key}'. Sending '{psu_command}'")
               psucontrol.PSUControl.turn_psu_on(psucontrol_info_impl)
             elif psu_is_on and desired_state < 1:
-              tools_cool_enough_to_turn_off_psu = can_trigger_while_hot = current_action.get("can_trigger_while_hot", False)
+              can_trigger_while_hot = current_action.get("can_trigger_while_hot", False)
+              tools_cool_enough_to_turn_off_psu = True
               hotend_max = current_action.get("hotend_max", 50)
               if not can_trigger_while_hot:
                 printer_temps = self._printer.get_current_temperatures()
                 self._logger.info(f"printer_temps '{printer_temps}'")
-                for key, value in printer_temps.items():
-                  self._logger.info(f"tool {key} '{value}'")
+                for hot_thing, value in printer_temps.items():
+                  self._logger.info(f"tool {hot_thing} '{value}'")
                   
                   if key.startswith("tool") and value.get("actual", 0) > hotend_max:
-                    self._logger.info(f"tool {key} too hot")
+                    self._logger.info(f"tool {hot_thing} too hot")
                     
                     tools_cool_enough_to_turn_off_psu = False
                     break;
@@ -265,9 +261,11 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     
     eventManager().subscribe("plugin_usb_keyboard_key_event", self._key_event)
     
-    self._logger.info("Starting Keyboard Listener")
     self.listener = KeyboardListenerThread('USB Keyboard Listener Thread')
     self.listener.start()
+    
+    self._logger.info("Started Keyboard Listener")
+    
     
     
     # self.listener = threading.Thread(target=key_read_loop, daemon=True) # Make thread a daemon thread
@@ -278,9 +276,10 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     # self.listener.start()
     
   def on_shutdown(self):
-    self._logger.info("Stopping Keyboard Listener")
     self.listener.raise_exception()
     self.listener.join(0.1)
+    self._logger.info("Stopped Keyboard Listener")
+    
 
   ##~~ SettingsPlugin mixin
 
