@@ -8,6 +8,7 @@ import json
 import asyncio
 import requests
 import inspect
+from pprint import pformat
 
 # from pynput import keyboard
 # import threading
@@ -278,17 +279,20 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
 
     
     
-        psucontrol = self._plugin_manager.get_plugin("psucontrol")#.turn_psu_on()
-        psucontrol_info = self._plugin_manager.get_plugin_info("psucontrol", require_enabled=True)#.turn_psu_on()
+        psucontrol = self._plugin_manager.get_plugin("psucontrol")
+        psucontrol_info = self._plugin_manager.get_plugin_info("psucontrol", require_enabled=True)
+        psucontrol.PSUControl.turn_psu_on(psucontrol_info.get_implementation())
         
         
         # inspect.getmembers(psucontrol)
         
         # self._logger.info(f" ******** {psucontrol}")
-        self._logger.info(f" ******** {inspect.getmembers(psucontrol)}")
-        self._logger.info(f" ******** PSUControl info {inspect.getmembers(psucontrol_info)}")
+        # self._logger.info(f" ******** {inspect.getmembers(psucontrol)}")
+        self._logger.info(f" ******** PSUControl info implementation {inspect.getmembers(psucontrol_info.get_implementation())} *******")
+        self._logger.info(f" ******** PSUControl info implementation {inspect.getmembers(pformat(psucontrol_info.get_implementation()))} *******")
         
-        self._logger.info(f" ******** PSUControl class {inspect.getmembers(psucontrol.PSUControl)}")
+        
+        # self._logger.info(f" ******** PSUControl class {inspect.getmembers(psucontrol.PSUControl)}")
         
 
 
@@ -390,7 +394,9 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
   def on_shutdown(self):
     self._logger.info("Stopping Keyboard Listener")
     
-    self.keyboard_listener_task.cancel()
+    loop = asyncio.get_event_loop()
+    loop.stop()
+    loop.close()
 
   ##~~ SettingsPlugin mixin
 
@@ -402,52 +408,27 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       profiles={
         "default":{
           "commands":{
-            # # "Key.ctrl":{"pressed":{"printer":["M117 Howdy!"]}, "released":{"printer":["M117 Bye!"]}},
-            #
-            # "0":{"pressed":{"printer":["G28 X Y"]}, "variable_values":{"distance":"0.1", "bed":"50", "hotend":"200"}},  # homing x, y
-            # ".":{"pressed":{"listen_vars":["distance"]}, "released":{"save_vars":["distance"]}},  # making this my variable modifier
-            # "\\x03":{"pressed":{"printer":["G28 Z"]}}, # homing z
-            #
-            # "1":{"pressed":{"printer":["G0 X10 Y10"]}, "variable_values":{"distance":"1", "bed":"60", "hotend":"210"}},  # front left corner, 10x10 in
-            # "2":{"pressed":{"printer":["G0 Y-<distance>"]}, "variable_values":{"distance":"10"}},  # move south
-            # "3":{"pressed":{"printer":["G0 X290 Y10"]}, "variable_values":{"distance":"100"}},  # front right corner, 10x10 in
-            # "4":{"pressed":{"printer":["G0 X-<distance>"]}},  # move west
-            # "5":{"pressed":{"printer":["G0 X150 Y150"]}},  # center
-            # "6":{"pressed":{"printer":["G0 X+<distance>"]}},  # move east
-            # "7":{"pressed":{"printer":["G0 X10 Y290"]}},  # rear left corner, 10x10 in
-            # "8":{"pressed":{"printer":["G0 Y+<distance>"]}},  # move north
-            # "9":{"pressed":{"printer":["G0 X290 Y290"]}},  # rear right corner, 10x10 in
-            #
-            # "+":{"pressed":{"printer":["G0 Z-<distance>"]}},  # move down
-            # "-":{"pressed":{"printer":["G0 Z+<distance>"]}},  # move up
-            #
-            #
-            # "tab":{"pressed":{"listen_vars":["bed","hotend"]}, "released":{"save_vars":["bed","hotend"]}},  # set temperatures for hotend and bed
-            # "=":{"pressed":{"printer":["M104 S<hotend>","M140 S<bed>"]}},  # rear right corner, 10x10 in
-            # "esc":{"pressed":{"logger":True}},
             
-            # "Key.ctrl":{"pressed":{"printer":["M117 Howdy!"]}, "released":{"printer":["M117 Bye!"]}},
-            
-            "KP0":{"pressed":{"printer":["G28 X Y"]}, "variable_values":{"distance":"0.1", "bed":"50", "hotend":"200"}},  # homing x, y
-            "KPDOT":{"pressed":{"listen_vars":["distance"]}, "released":{"save_vars":["distance"]}},  # making this my variable modifier
+            "KP0":{"pressed":{"printer":["G28 X Y"]}, "variable_values":{"distance":"0.1", "bed":"0", "hotend":"0"}},  # homing x, y
+            "KPDOT":{"pressed":{"listen_vars":["distance", "hotend", "bed"]}, "released":{"save_vars":["distance", "hotend", "bed"]}},  # making this my variable modifier
             "KPENTER":{"pressed":{"printer":["G28 Z"]}}, # homing z
             
-            "KP1":{"pressed":{"printer":["G0 X10 Y10 F6000"]}, "variable_values":{"distance":"1", "bed":"60", "hotend":"210"}},  # front left corner, 10x10 in
+            "KP1":{"pressed":{"printer":["G0 X10 Y10 F6000"]}, "variable_values":{"distance":"1"}},  # front left corner, 10x10 in
             "KP2":{"pressed":{"printer":["G91","G0 Y-<distance> F6000","G90"]}, "variable_values":{"distance":"10"}},  # move south
             "KP3":{"pressed":{"printer":["G0 X290 Y10 F6000"]}, "variable_values":{"distance":"100"}},  # front right corner, 10x10 in
-            "KP4":{"pressed":{"printer":["G91","G0 X-<distance> F6000","G90"]}},  # move west
-            "KP5":{"pressed":{"printer":["G0 X150 Y150 F6000"]}},  # center
-            "KP6":{"pressed":{"printer":["G91","G0 X+<distance> F6000","G90"]}},  # move east
-            "KP7":{"pressed":{"printer":["G0 X10 Y290 F6000"]}},  # rear left corner, 10x10 in
-            "KP8":{"pressed":{"printer":["G91","G0 Y+<distance> F6000","G90"]}},  # move north
-            "KP9":{"pressed":{"printer":["G0 X290 Y290 F6000"]}},  # rear right corner, 10x10 in
+            "KP4":{"pressed":{"printer":["G91","G0 X-<distance> F6000","G90"]}, "variable_values":{"bed":"0"}},  # move west
+            "KP5":{"pressed":{"printer":["G0 X150 Y150 F6000"]}, "variable_values":{"bed":"50"}},  # center
+            "KP6":{"pressed":{"printer":["G91","G0 X+<distance> F6000","G90"]}, "variable_values":{"bed":"60"}},  # move east
+            "KP7":{"pressed":{"printer":["G0 X10 Y290 F6000"]}, "variable_values":{"hotend":"0"}},  # rear left corner, 10x10 in
+            "KP8":{"pressed":{"printer":["G91","G0 Y+<distance> F6000","G90"]}, "variable_values":{"hotend":"205"}},  # move north
+            "KP9":{"pressed":{"printer":["G0 X290 Y290 F6000"]}, "variable_values":{"hotend":"210"}},  # rear right corner, 10x10 in
             
             "KPPLUS":{"pressed":{"printer":["G91","G0 Z-<distance> F300","G90"]}},  # move down
             "KPMINUS":{"pressed":{"printer":["G91","G0 Z+<distance> F300","G90"]}},  # move up
             
             
-            "BACKSPACE":{"pressed":{"listen_vars":["bed","hotend"]}, "released":{"save_vars":["bed","hotend"]}},  # set temperatures for hotend and bed
-            "EQUAL":{"pressed":{"printer":["M104 S<hotend>","M140 S<bed>"]}},  # rear right corner, 10x10 in
+            # "BACKSPACE":{"pressed":{"listen_vars":["bed","hotend"]}, "released":{"save_vars":["bed","hotend"]}},  # set temperatures for hotend and bed
+            "EQUAL":{"pressed":{"printer":["M104 S<hotend>","M140 S<bed>"]}},  # set hotend and bed
             "ESC":{"pressed":{"psu":["turnPSUOn"]}},
           },
           "keyboard":{
