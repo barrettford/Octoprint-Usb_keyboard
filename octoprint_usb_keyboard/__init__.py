@@ -275,7 +275,24 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
 #         self._logger.info(f"psucontrol '{psu_control}'")
 #         psu_control.turn_psu_on()
 #         # self._logger.info(f"")
-        self._plugin_manager.get_plugin("psucontrol").PSUControl.turn_psu_on(self._plugin_manager.get_plugin("psucontrol").PSUControl)
+
+    
+    
+        psucontrol = self._plugin_manager.get_plugin("psucontrol")#.turn_psu_on()
+        psucontrol_info = self._plugin_manager.get_plugin_info("psucontrol", require_enabled=True)#.turn_psu_on()
+        
+        
+        # inspect.getmembers(psucontrol)
+        
+        # self._logger.info(f" ******** {psucontrol}")
+        self._logger.info(f" ******** {inspect.getmembers(psucontrol)}")
+        self._logger.info(f" ******** PSUControl info {inspect.getmembers(psucontrol_info)}")
+        
+        self._logger.info(f" ******** PSUControl class {inspect.getmembers(psucontrol.PSUControl)}")
+        
+
+
+        psucontrol.PSUControl.turn_psu_on(psucontrol_info.get_implementation())
 
         # response = requests.get("http://127.0.0.1:{}/api/plugin/psucontrol".format(self._settings.global_get(["server", "port"])),
 #                                  headers={"X-Api-Key": self._settings.global_get(["api", "key"])})
@@ -309,12 +326,13 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
   def set_up_keyboard_listener(self):
      # Maybe turn [2] into "hold" one day
     
-    self._logger.info("Staring Keyboard Listener")
-    device = InputDevice('/dev/input/event1')
+    self._logger.info("Starting Keyboard Listener")
+    target_device = InputDevice('/dev/input/event1')
     # device.grab() # prevent other processes from taking the keyboard
     # dev.ungrab()
 
     async def listener(device):
+      self._logger.info("Started Keyboard Listener")
       key_dict = {}
       KEY_STATE = ["released", "pressed", "pressed"]
       try:
@@ -331,10 +349,15 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       except asyncio.CancelledError:
         pass
       finally:
-        self._logger.info("Stopping Keyboard Listener")
+        self._logger.info("Stopped Keyboard Listener")
           
 
-    self.keyboard_listener_task = asyncio.run(listener(device))
+    # self.keyboard_listener_task = asyncio.run(listener(device))
+    
+    loop = asyncio.new_event_loop()
+    loop.run_until_complete(listener(target_device))
+    
+    
 
     # loop = asyncio.new_event_loop()
     # asyncio.set_event_loop(loop)
@@ -343,16 +366,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
   def on_after_startup(self):
     # self._logger.info("USB Keyboard loading")
     
-    
-    
-    psucontrol = self._plugin_manager.get_plugin("psucontrol")#.turn_psu_on()
-    
-    # inspect.getmembers(psucontrol)
-    
-    # self._logger.info(f" ******** {psucontrol}")
-    # self._logger.info(f" ******** {inspect.getmembers(psucontrol)}")
-    self._logger.info(f" ******** {inspect.getmembers(psucontrol.PSUControl)}")
-    
+
     
     self.key_status = dict()
     self.key_discovery = {}
@@ -374,6 +388,8 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     # self.listener.start()
     
   def on_shutdown(self):
+    self._logger.info("Stopping Keyboard Listener")
+    
     self.keyboard_listener_task.cancel()
 
   ##~~ SettingsPlugin mixin
