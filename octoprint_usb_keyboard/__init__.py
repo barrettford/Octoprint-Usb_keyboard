@@ -173,20 +173,22 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
               psucontrol.PSUControl.turn_psu_on(psucontrol_info_impl)
             elif psu_is_on and desired_state < 1:
               can_trigger_while_hot = current_action.get("can_trigger_while_hot", False)
-              tools_cool_enough_to_turn_off_psu = True
+              tools_too_hot_to_turn_off_psu = False
               hotend_max = current_action.get("hotend_max", 50)
+              self._logger.info(f"can_trigger_while_hot '{can_trigger_while_hot}' hotend_max '{hotend_max}'")
+              
               if not can_trigger_while_hot:
                 printer_temps = self._printer.get_current_temperatures()
                 self._logger.info(f"printer_temps '{printer_temps}'")
-                for hot_thing, value in printer_temps.items():
-                  self._logger.info(f"tool {hot_thing} '{value}'")
-                  
-                  if key.startswith("tool") and value.get("actual", 0) > hotend_max:
-                    self._logger.info(f"tool {hot_thing} too hot")
-                    
-                    tools_cool_enough_to_turn_off_psu = False
-                    break;
-              if tools_cool_enough_to_turn_off_psu:
+                
+                for tool, tool_temps in printer_temps.items():
+                  if tool.startswith("tool") and tool_temps.get("actual", 0) > hotend_max:
+                    self._logger.info(f"tool '{tool}'")
+                    tools_too_hot_to_turn_off_psu = True
+                    break
+              self._logger.info(f"tools_too_hot_to_turn_off_psu '{tools_too_hot_to_turn_off_psu}'")
+              
+              if can_trigger_while_hot or not tools_too_hot_to_turn_off_psu:
                 self._logger.info(f"Found psu command for key '{key}'. Sending '{psu_command}'")
                 psucontrol.PSUControl.turn_psu_off(psucontrol_info_impl)
               else:
@@ -292,27 +294,29 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         "default":{
           "commands":{
             
-            "KPDOT":  {"pressed": [{"type":"listen_vars", "variables":["distance", "hotend", "bed"]}],
-                      "released": [{"type":"save_vars",   "variables":["distance", "hotend", "bed"]}]
-            },  # making this my variable modifier
-            "KPENTER":{"pressed": [{"type":"printer", "gcode":["G28 Z"]}]}, # homing z
+            "KPDOT":     {"pressed": [{"type":"listen_vars", "variables":["distance", "hotend", "bed"]}], "released": [{"type":"save_vars",   "variables":["distance", "hotend", "bed"]}]},  # making this my variable modifier
+            "KPENTER":   {"pressed": [{"type":"printer", "gcode":["G28 Z"]}]}, # homing z
+                         
+            "KP0":       {"pressed": [{"type":"printer", "gcode":["G28 X Y"]}],                           "variable_values": {"distance":0.1}   },  # homing x, y
+            "KP1":       {"pressed": [{"type":"printer", "gcode":["G0 X10 Y10 F6000"]}],                  "variable_values": {"distance":1}     },  # front left corner, 10x10 in
+            "KP2":       {"pressed": [{"type":"printer", "gcode":["G91","G0 Y-<distance> F6000","G90"]}], "variable_values": {"distance":10}    },  # move south
+            "KP3":       {"pressed": [{"type":"printer", "gcode":["G0 X290 Y10 F6000"]}],                 "variable_values": {"distance":100}   },  # front right corner, 10x10 in
+            "KP4":       {"pressed": [{"type":"printer", "gcode":["G91","G0 X-<distance> F6000","G90"]}], "variable_values": {"bed":0}          },  # move west
+            "KP5":       {"pressed": [{"type":"printer", "gcode":["G0 X150 Y150 F6000"]}],                "variable_values": {"bed":50}         },  # center
+            "KP6":       {"pressed": [{"type":"printer", "gcode":["G91","G0 X+<distance> F6000","G90"]}], "variable_values": {"bed":60}         },  # move east
+            "KP7":       {"pressed": [{"type":"printer", "gcode":["G0 X10 Y290 F6000"]}],                 "variable_values": {"hotend":0}       },  # rear left corner, 10x10 in
+            "KP8":       {"pressed": [{"type":"printer", "gcode":["G91","G0 Y+<distance> F6000","G90"]}], "variable_values": {"hotend":205}     },  # move north
+            "KP9":       {"pressed": [{"type":"printer", "gcode":["G0 X290 Y290 F6000"]}],                "variable_values": {"hotend":210}     },  # rear right corner, 10x10 in
+            "KPPLUS":    {"pressed": [{"type":"printer", "gcode":["G91","G0 Z-<distance> F300","G90"]}]                                         },  # move down
+            "KPMINUS":   {"pressed": [{"type":"printer", "gcode":["G91","G0 Z+<distance> F300","G90"]}]                                         },  # move up
+            "KPASTERISK":{"pressed": [{"type":"printer", "gcode":["G91","G1 E-<distance> F300","G90"]}]                                         },  # move up
+            "BACKSPACE": {"pressed": [{"type":"printer", "gcode":["G91","G1 E+<distance> F300","G90"]}]                                         },  # move up
             
-            "KP0":    {"pressed": [{"type":"printer", "gcode":["G28 X Y"]}],                           "variable_values": {"distance":0.1}   },  # homing x, y
-            "KP1":    {"pressed": [{"type":"printer", "gcode":["G0 X10 Y10 F6000"]}],                  "variable_values": {"distance":1}     },  # front left corner, 10x10 in
-            "KP2":    {"pressed": [{"type":"printer", "gcode":["G91","G0 Y-<distance> F6000","G90"]}], "variable_values": {"distance":10}    },  # move south
-            "KP3":    {"pressed": [{"type":"printer", "gcode":["G0 X290 Y10 F6000"]}],                 "variable_values": {"distance":100}   },  # front right corner, 10x10 in
-            "KP4":    {"pressed": [{"type":"printer", "gcode":["G91","G0 X-<distance> F6000","G90"]}], "variable_values": {"bed":0}          },  # move west
-            "KP5":    {"pressed": [{"type":"printer", "gcode":["G0 X150 Y150 F6000"]}],                "variable_values": {"bed":50}         },  # center
-            "KP6":    {"pressed": [{"type":"printer", "gcode":["G91","G0 X+<distance> F6000","G90"]}], "variable_values": {"bed":60}         },  # move east
-            "KP7":    {"pressed": [{"type":"printer", "gcode":["G0 X10 Y290 F6000"]}],                 "variable_values": {"hotend":0}       },  # rear left corner, 10x10 in
-            "KP8":    {"pressed": [{"type":"printer", "gcode":["G91","G0 Y+<distance> F6000","G90"]}], "variable_values": {"hotend":205}     },  # move north
-            "KP9":    {"pressed": [{"type":"printer", "gcode":["G0 X290 Y290 F6000"]}],                "variable_values": {"hotend":210}     },  # rear right corner, 10x10 in
-            "KPPLUS": {"pressed": [{"type":"printer", "gcode":["G91","G0 Z-<distance> F300","G90"]}]                                         },  # move down
-            "KPMINUS":{"pressed": [{"type":"printer", "gcode":["G91","G0 Z+<distance> F300","G90"]}]                                         },  # move up
             
+            # "EQUAL":  {"pressed": [{"type":"printer", "gcode":["M104 S<hotend>","M140 S<bed>"]}]                                             },  # set hotend and bed
             
             # "BACKSPACE":{"pressed":{"listen_vars":["bed","hotend"]}, "released":{"save_vars":["bed","hotend"]}},  # set temperatures for hotend and bed
-            "EQUAL":  {"pressed": [{"type":"printer", "gcode":["M104 S<hotend>","M140 S<bed>"]}]                                             },  # set hotend and bed
+            "KPSLASH":  {"pressed": [{"type":"printer", "gcode":["M104 S<hotend>","M140 S<bed>"]}]                                             },  # set hotend and bed
             "ESC":    {"pressed": [{"type":"psu", "command":"toggle", "can_trigger_while_hot":False, "hotend_max":50 }]                      }
           },
           "keyboard":{
