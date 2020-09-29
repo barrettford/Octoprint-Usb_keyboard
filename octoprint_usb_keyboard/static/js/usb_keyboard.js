@@ -32,18 +32,9 @@ $(function() {
     
 
 
-    
-
-
-
-      
-
-    
     self.configureKey = function(data, row, key, event) {
-      // TODO:  Configure a key when one of these is pressed
-      
-      
-      OctoPrint.simpleApiCommand('usb_keyboard', 'key_discovery', {"row":row, "key":key});
+      // TODO:  DON'T LOSE THIS
+      // OctoPrint.simpleApiCommand('usb_keyboard', 'key_discovery', {"row":row, "key":key});
       
       // self.keyDetectionBinding(null)
       // self.settings.settings.plugins.usb_keyboard.key_discovery(null)
@@ -112,15 +103,36 @@ $(function() {
     }
     
     
+    
     profileViewModel = function(profile) {
       var self = this;
       
-      console.log("")
+      
       
       // self.commands = ko.observable(profile.commands());
       self.keyboard = ko.observable(new keyboardViewModel(profile["keyboard"]));
-      // self.variables = ko.observable(profile.variables());
+      // var variableViewModel = ko.mapping.fromJS(profile["variables"])
+      self.variables = ko.observable(profile["variables"]);
+      // console.log("variables", self.variables())
+      // var variableViewModel = ko.mapping.fromJS(profile["variables"])
+//       self.variables = ko.observable(variableViewModel);
+
+      this.deleteVariable = function(variable, data, event) {
+        console.log("before variables", self.variables())
+        delete self.variables()[variable.key]
+        self.variables.valueHasMutated()
+        console.log("after variables", self.variables())
+      }
+      
+      this.addVariable = function(variable, data, event) {
+        console.log("before variables", self.variables())
+        delete self.variables()[variable.key]
+        self.variables.valueHasMutated()
+        console.log("after variables", self.variables())
+      }
+//       console.log("variables", self.variables())
     }
+    
     
 
     
@@ -250,6 +262,31 @@ $(function() {
     // self.onEventPlugin_usb_keyboard_key_event = function(payload) {
     //   console.log("Key Pressed! ", payload)
     // }
+    
+    
+    ko.bindingHandlers['keyvalue'] = {
+      makeTemplateValueAccessor: function(valueAccessor) {
+          return function() {
+              var values = ko.unwrap(valueAccessor());
+              var array = [];
+              for (var key in values)
+                  array.push({key: key, value: values[key]});
+              return array;
+          };
+      },
+      'init': function(element, valueAccessor, allBindings, viewModel, bindingContext) {
+        console.log("valueAccessor", valueAccessor)
+        console.log("valueAccessor()", valueAccessor())
+        console.log("ko.unwrap(valueAccessor())", ko.unwrap(valueAccessor()))
+        
+        
+        
+        return ko.bindingHandlers['foreach']['init'](element, ko.bindingHandlers['keyvalue'].makeTemplateValueAccessor(valueAccessor));
+      },
+      'update': function(element, valueAccessor, allBindings, viewModel, bindingContext) {
+        return ko.bindingHandlers['foreach']['update'](element, ko.bindingHandlers['keyvalue'].makeTemplateValueAccessor(valueAccessor), allBindings, viewModel, bindingContext);
+      }
+    };
   }
 
   /* view model class, parameters for constructor, container to bind to

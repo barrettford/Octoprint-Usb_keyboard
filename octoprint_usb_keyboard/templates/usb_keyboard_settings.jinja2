@@ -36,7 +36,7 @@
 <table class="controls" id="settings_dialog" data-bind="with: keyboard">
   <thead>
     <tr>
-      <td><strong>Key Configuration</strong></td>
+      <td><strong>Key Mapping</strong></td>
       <td>
         <button data-bind="css: keyboardSizeLockedClass, click: toggleKeyboardSizeLock"></button>
       </td>
@@ -54,7 +54,7 @@
             <tr>
             <!-- ko foreach: keys -->
               <td>
-                <button class="btn" id="keyboardKey" data-bind="text: $data, click: $root.configureKey.bind($data, $data, $parentContext.$index(), $index()), style: { opacity: $data == null ? 0.4 : 1.0 }"></button>
+                <button class="btn btn-default" id="keyboardKey" data-bind="text: $data, click: $root.configureKey.bind($data, $data, $parentContext.$index(), $index()), style: { opacity: $data == null ? 0.4 : 1.0 }"></button>
                 <!-- click: $root.configureKey.bind($data, $data, $index()), style: { opacity: $data == null ? 0.4 : 1.0 } -->
               </td>
             <!-- /ko -->
@@ -82,4 +82,24 @@
     </tr>
   <tbody>
 </table>
-        <!-- /ko -->
+
+
+<table class="variables" id="settings_dialog">
+  <thead>
+    <tr>
+      <td><strong>Variable Configuration</strong></td>
+    </tr>
+  </thead>
+  <tbody data-bind="keyvalue: variables">
+    <tr>
+      <td data-bind="text: key"></td>
+      <td>
+        <input data-bind="textInput: value" /></p>
+      </td>
+      <td>
+        <button class="btn btn-danger" data-bind="click: $parent.deleteVariable.bind(key)">{{ _('-') }}</button>
+      </td>
+    </tr>
+  <tbody>
+</table>
+<!-- /ko -->
