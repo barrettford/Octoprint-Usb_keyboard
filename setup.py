@@ -32,8 +32,14 @@ plugin_url = "https://github.com/barrettford/OctoPrint-Usb_keyboard"
 # The plugin's license. Can be overwritten within OctoPrint's internal data via __plugin_license__ in the plugin module
 plugin_license = "AGPLv3"
 
+import sys
+if sys.platform.startswith("linux"):
+  key_listener_module = "evdev"
+else:
+  key_listener_module = "pynput"
+
 # Any additional requirements besides OctoPrint should be listed here
-plugin_requires = ["evdev", "requests"]# "pynput"]
+plugin_requires = [key_listener_module, "requests"]# "pynput"]
 
 ### --------------------------------------------------------------------------------------------------------------------
 ### More advanced options that you usually shouldn't have to touch follow after this point

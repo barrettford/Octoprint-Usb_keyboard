@@ -7,8 +7,12 @@ import re
 import json
 import requests
 import inspect
-from .keyboard_listener import KeyboardListenerThread 
-from octoprint.events import Events, eventManager, all_events
+import sys
+if sys.platform.startswith("linux"):
+  from .keyboard_listener_evdev import KeyboardListenerThread 
+else:
+  from .keyboard_listener_pynput import KeyboardListenerThread 
+from octoprint.events import eventManager
 
 
 
@@ -273,8 +277,8 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     # self.listener.start()
     
   def on_shutdown(self):
-    self.listener.raise_exception()
-    self.listener.join(0.1)
+    self.listener.stop()
+    # self.listener.join(0.1)
     self._logger.info("Stopped Keyboard Listener")
     
 
@@ -288,6 +292,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       profiles={
         "default":{
           "commands":{
+            # **************************** Linux ******************************
             
             "KPDOT":     {"pressed": [{"type":"listen_vars", "variables":["distance", "hotend", "bed"]}], "released": [{"type":"save_vars", "variables":["distance", "hotend", "bed"]}]},  # making this my variable modifier
             "KPENTER":   {"pressed": [{"type":"printer", "gcode":["G28 Z"]}]}, # homing z
@@ -311,8 +316,33 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
             # "EQUAL":  {"pressed": [{"type":"printer", "gcode":["M104 S<hotend>","M140 S<bed>"]}]                                             },  # set hotend and bed
             
             # "BACKSPACE":{"pressed":{"listen_vars":["bed","hotend"]}, "released":{"save_vars":["bed","hotend"]}},  # set temperatures for hotend and bed
-            "KPSLASH":  {"pressed": [{"type":"printer", "gcode":["M104 S<hotend>","M140 S<bed>"]}]                                             },  # set hotend and bed
-            "ESC":    {"pressed": [{"type":"psu", "command":"toggle", "can_trigger_while_hot":False, "hotend_max":50 }]                      }
+            "KPSLASH":   {"pressed": [{"type":"printer", "gcode":["M104 S<hotend>","M140 S<bed>"]}]                                             },  # set hotend and bed
+            "ESC":       {"pressed": [{"type":"psu", "command":"toggle", "can_trigger_while_hot":False, "hotend_max":50 }]                      },
+            # **************************** Mac ******************************
+            ".":         {"pressed": [{"type":"listen_vars", "variables":["distance", "hotend", "bed"]}], "released": [{"type":"save_vars", "variables":["distance", "hotend", "bed"]}]},  # making this my variable modifier
+            "\\x03":     {"pressed": [{"type":"printer", "gcode":["G28 Z"]}]}, # homing z
+                         
+            "0":         {"pressed": [{"type":"printer", "gcode":["G28 X Y"]}],                           "variable_values": {"distance":0.1}   },  # homing x, y
+            "1":         {"pressed": [{"type":"printer", "gcode":["G0 X10 Y10 F6000"]}],                  "variable_values": {"distance":1}     },  # front left corner, 10x10 in
+            "2":         {"pressed": [{"type":"printer", "gcode":["G91","G0 Y-<distance> F6000","G90"]}], "variable_values": {"distance":10}    },  # move south
+            "3":         {"pressed": [{"type":"printer", "gcode":["G0 X290 Y10 F6000"]}],                 "variable_values": {"distance":100}   },  # front right corner, 10x10 in
+            "4":         {"pressed": [{"type":"printer", "gcode":["G91","G0 X-<distance> F6000","G90"]}], "variable_values": {"bed":0}          },  # move west
+            "5":         {"pressed": [{"type":"printer", "gcode":["G0 X150 Y150 F6000"]}],                "variable_values": {"bed":50}         },  # center
+            "6":         {"pressed": [{"type":"printer", "gcode":["G91","G0 X+<distance> F6000","G90"]}], "variable_values": {"bed":60}         },  # move east
+            "7":         {"pressed": [{"type":"printer", "gcode":["G0 X10 Y290 F6000"]}],                 "variable_values": {"hotend":0}       },  # rear left corner, 10x10 in
+            "8":         {"pressed": [{"type":"printer", "gcode":["G91","G0 Y+<distance> F6000","G90"]}], "variable_values": {"hotend":205}     },  # move north
+            "9":         {"pressed": [{"type":"printer", "gcode":["G0 X290 Y290 F6000"]}],                "variable_values": {"hotend":210}     },  # rear right corner, 10x10 in
+            "+":         {"pressed": [{"type":"printer", "gcode":["G91","G0 Z-<distance> F300","G90"]}]                                         },  # move down
+            "-":         {"pressed": [{"type":"printer", "gcode":["G91","G0 Z+<distance> F300","G90"]}]                                         },  # move up
+            "*":         {"pressed": [{"type":"printer", "gcode":["G91","G1 E-<distance> F300","G90"]}]                                         },  # move up
+            "backspace": {"pressed": [{"type":"printer", "gcode":["G91","G1 E+<distance> F300","G90"]}]                                         },  # move up
+            
+            
+            # "EQUAL":  {"pressed": [{"type":"printer", "gcode":["M104 S<hotend>","M140 S<bed>"]}]                                             },  # set hotend and bed
+            
+            # "BACKSPACE":{"pressed":{"listen_vars":["bed","hotend"]}, "released":{"save_vars":["bed","hotend"]}},  # set temperatures for hotend and bed
+            "/":         {"pressed": [{"type":"printer", "gcode":["M104 S<hotend>","M140 S<bed>"]}]                                             },  # set hotend and bed
+            "esc":       {"pressed": [{"type":"psu", "command":"toggle", "can_trigger_while_hot":False, "hotend_max":50 }]                      }
           },
           "keyboard":{
             "rows":[
