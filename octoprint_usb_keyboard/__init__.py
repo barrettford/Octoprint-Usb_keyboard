@@ -175,19 +175,14 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
               can_trigger_while_hot = current_action.get("can_trigger_while_hot", False)
               tools_too_hot_to_turn_off_psu = False
               hotend_max = current_action.get("hotend_max", 50)
-              self._logger.info(f"can_trigger_while_hot '{can_trigger_while_hot}' hotend_max '{hotend_max}'")
               
               if not can_trigger_while_hot:
                 printer_temps = self._printer.get_current_temperatures()
-                self._logger.info(f"printer_temps '{printer_temps}'")
                 
                 for tool, tool_temps in printer_temps.items():
                   if tool.startswith("tool") and tool_temps.get("actual", 0) > hotend_max:
-                    self._logger.info(f"tool '{tool}'")
                     tools_too_hot_to_turn_off_psu = True
                     break
-              self._logger.info(f"tools_too_hot_to_turn_off_psu '{tools_too_hot_to_turn_off_psu}'")
-              
               if can_trigger_while_hot or not tools_too_hot_to_turn_off_psu:
                 self._logger.info(f"Found psu command for key '{key}'. Sending '{psu_command}'")
                 psucontrol.PSUControl.turn_psu_off(psucontrol_info_impl)
@@ -294,7 +289,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         "default":{
           "commands":{
             
-            "KPDOT":     {"pressed": [{"type":"listen_vars", "variables":["distance", "hotend", "bed"]}], "released": [{"type":"save_vars",   "variables":["distance", "hotend", "bed"]}]},  # making this my variable modifier
+            "KPDOT":     {"pressed": [{"type":"listen_vars", "variables":["distance", "hotend", "bed"]}], "released": [{"type":"save_vars", "variables":["distance", "hotend", "bed"]}]},  # making this my variable modifier
             "KPENTER":   {"pressed": [{"type":"printer", "gcode":["G28 Z"]}]}, # homing z
                          
             "KP0":       {"pressed": [{"type":"printer", "gcode":["G28 X Y"]}],                           "variable_values": {"distance":0.1}   },  # homing x, y
