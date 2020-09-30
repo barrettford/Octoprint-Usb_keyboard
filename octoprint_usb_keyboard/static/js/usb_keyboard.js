@@ -16,239 +16,47 @@ $(function() {
     // self.settingsViewModel = parameters[1];
     
     self.settingsViewModel = parameters[0];
-    console.log("Settings ", self.settingsViewModel)
+    // console.log("Settings ", self.settingsViewModel)
     
     
     self.activeProfileName = ko.observable();
-    self.activeProfileData = ko.observable();
-    self.activeProfileView = ko.observable();
+    self.profiles = ko.observable();
     
-    self.editingProfileName = ko.observable(null);
-    self.editingProfileProfile = ko.observable();
+    // self.profileNames = ko.computed(function() {
+//       return Object.keys(self.profiles())
+//     }).extend({ notify: 'always' });
     
-    self.profilesLocked = ko.observable(true);
-    self.profileList = ko.observableArray();
-    // self.keyDiscovery = ko.observable(false);
     
-
-
-    self.configureKey = function(data, row, key, event) {
-      // TODO:  DON'T LOSE THIS
-      // OctoPrint.simpleApiCommand('usb_keyboard', 'key_discovery', {"row":row, "key":key});
+    self.configureKey = function(text, row, column, parent, event) {
+      console.log("Key '" + text + "' pressed, [" + row + "][" + column + "] ")
+      console.log("parent", parent)
+      console.log("parent.$parent", parent.$parent)
+      console.log("parent.$parent.key", parent.$parent.key)
       
+      
+      // TODO:  DON'T LOSE THIS
+      OctoPrint.simpleApiCommand('usb_keyboard', 'key_discovery', {"row":row, "column":column, "profile":parent.$parent.key});
+
       // self.keyDetectionBinding(null)
       // self.settings.settings.plugins.usb_keyboard.key_discovery(null)
       // self.settingsViewModel.saveData({plugins: {usb_keyboard: {key_discovery: {"row":row,"key":key}}}})
       // self.keyDetectionBinding(self.settings.settings.plugins.usb_keyboard.key_discovery())
       // console.log("self.keyDetectionBinding() ", self.keyDetectionBinding())
-      console.log("self.settings() ", self.settingsViewModel.settings.plugins.usb_keyboard.key_discovery)
+      // console.log("self.settings() ", self.settingsViewModel.settings.plugins.usb_keyboard.key_discovery)
     };
     
-    
-    
-    keysViewModel = function(keys) {
-      var self = this;
-      
-      
-      self.keys = ko.observableArray(keys);
-      
-      this.addKey = function() {
-        console.log("Clicked + key");
-        self.keys.push(null)
-      };
-      
-      // this will be called when the user clicks the "+ Column" button and add a new column of data
-      this.deleteKey = function() {
-        console.log("Clicked - key");
-        // TODO:  Put an "Are you sure?" dialog if the cell has config
-        self.keys.pop()
-      };
-    }
-    
-    
-    keyboardViewModel = function(keyboard) {
-      var self = this;
-      
-      self.rows = ko.observableArray();
-      self.keyboardSizeLocked = ko.observable(true);
-      self.keyboardScaleMultiplier = ko.observable();
-      
-      
-      
-      self.toggleKeyboardSizeLock = function() {
-        self.keyboardSizeLocked(!self.keyboardSizeLocked());
-        console.log("Toggling keyboard size lock to " + (self.keyboardSizeLocked() ? 'locked' : 'unlocked'))
-      }
-      
-      self.keyboardSizeLockedClass = ko.pureComputed(function() {
-        return self.keyboardSizeLocked() ? 'fa fa-lock' : 'fa fa-unlock';
-      }).extend({ notify: 'always' });
-      
-      // this will be called when the user clicks the "+ Row" button and add a new row of data
-      self.addRow = function() {
-        console.log("Clicked + row");
-        self.rows.push(new keysViewModel([null]))
-      };
 
-      // this will be called when the user clicks the "+ Row" button and add a new row of data
-      this.deleteRow = function() {
-        console.log("Clicked - row");
-        // TODO:  Put an "Are you sure?" dialog if the cell has config
-        self.rows.pop()
-      };
-      
-      keyboard.rows().forEach(function (row) {
-        self.rows.push(new keysViewModel(row.keys()));
-      });
-    }
-    
-    
-    
-    profileViewModel = function(profile) {
-      var self = this;
-      
-      
-      
-      // self.commands = ko.observable(profile.commands());
-      self.keyboard = ko.observable(new keyboardViewModel(profile["keyboard"]));
-      // var variableViewModel = ko.mapping.fromJS(profile["variables"])
-      self.variables = ko.observable(profile["variables"]);
-      // console.log("variables", self.variables())
-      // var variableViewModel = ko.mapping.fromJS(profile["variables"])
-//       self.variables = ko.observable(variableViewModel);
-
-      this.deleteVariable = function(variable, data, event) {
-        console.log("before variables", self.variables())
-        delete self.variables()[variable.key]
-        self.variables.valueHasMutated()
-        console.log("after variables", self.variables())
-      }
-      
-      this.addVariable = function(variable, data, event) {
-        console.log("before variables", self.variables())
-        delete self.variables()[variable.key]
-        self.variables.valueHasMutated()
-        console.log("after variables", self.variables())
-      }
-//       console.log("variables", self.variables())
-    }
-    
-    
-
-    
-    // self.loadProfile = function(profileName) {
-    //
-    //
-    //
-    //   return new profileViewModel(settingsViewModel.settings.plugins.usb_keyboard.profiles[profileName])
-    // }
-    
-
-    
-
-    
-    self.toggleProfilesLock = function() {
-      self.profilesLocked(!self.profilesLocked());
-      console.log("Toggling profile lock to " + (self.profilesLocked() ? 'locked' : 'unlocked'))
-    }
-    
-    self.profilesLockedClass = ko.pureComputed(function() {
-      return self.profilesLocked() ? 'fa fa-lock' : 'fa fa-unlock';
-    }).extend({ notify: 'always' });
-    
-    
-    // self.selectProfile = function() {
-    //
-    // }
-    //
-    
-//     editProfileModal = function() {
-//       var self = this;
-//
-//       self.newProfile = ko.observable({"commands":{}, "variables":{}, "map":[]});
-//       self.newProfileName = ko.observable("");
-//
-//       // self.currentEmployee = ko.observable(null);
-// //       self.showEmployee = function(vm){
-// //           self.currentEmployee(vm);
-// //           $('#myModal').modal('show');
-// //       };
-//       //.... // rest of your view model here
-//     }
-
-    self.createProfile = function() {
-      console.log("Creating new profile.")
-      self.editingProfileProfile({"commands":{}, "variables":{}, "map":[null]});
-      self.editingProfileName("New Profile");
-    }
-    
-    self.saveProfile = function() {
-      console.log("Saving profile.", self.editingProfileName(), self.editingProfileProfile())
-      
-      self.settings.saveData(
-        {plugins: {usb_keyboard: {active_profile: self.editingProfileName(), profiles: {[self.editingProfileName()]: self.editingProfileProfile()}}}}
-      );
-      
-      if (self.editingProfileName() !== self.activeProfileName()) {
-        console.log(self.editingProfileName() + " != " + self.activeProfileName())
-        
-        
-        var name = self.editingProfileName();
-        // var profile = self.loadProfile(name);
-        self.activeProfileName = ko.observable(name)
-        self.activeProfile = ko.observable(profile);
-      
-        self.editingProfileName(null);
-        self.editingProfileProfile(null);
-      }
-    }
-
-    self.duplicateProfile = function() {
-      self.editingProfileProfile(self.activeProfileData())
-      self.editingProfileName(self.activeProfileName())
-    }
-    
-    self.deleteProfile = function() {
-      
-    }
-    
-    // self.updateActiveProfileView = ko.computed(function() {
-    //   console.log("Settings?", self.settings)
-    //   console.log("Settings no plugins?", self.settings.settings.plugins)
-    //   self.activeProfileView(new profileViewModel(self.settings, self.settings.plugins.usb_keyboard.profiles[self.activeProfileName()]));
-    // }).extend({ notify: 'always' });
-    //
-    //
-    // self.board = ko.observable();
-
-    // This will get called before the HelloWorldViewModel gets bound to the DOM, but after its
-    // dependencies have already been initialized. It is especially guaranteed that this method
-    // gets called _after_ the settings have been retrieved from the OctoPrint backend and thus
-    // the SettingsViewModel been properly populated.
     self.onBeforeBinding = function() {
-      self.activeProfileName(self.settingsViewModel.settings.plugins.usb_keyboard.active_profile());
-      console.log("Active Profile", self.activeProfileName());
-      
-      // console.log("Profiles", self.settingsViewModel.settings.plugins.usb_keyboard.profiles);
-      
-      self.activeProfileData(self.settingsViewModel.settings.plugins.usb_keyboard.profiles[self.activeProfileName()]);
-      // eval("self.activeProfileData(self.settingsViewModel.settings.plugins.usb_keyboard.profiles." + self.activeProfileName() + ")");
-      console.log("Active Profile Data", self.activeProfileData());
-      
-      self.activeProfileView(new profileViewModel(self.activeProfileData()));
-      console.log("Active Profile View", self.activeProfileView());
-      
-      self.profileList(Object.keys(self.settingsViewModel.settings.plugins.usb_keyboard.profiles));
-      console.log("Profile List ", self.profileList());
-      
-      // var profiles = self.settings.settings.plugins.usb_keyboard.profiles();
+      console.log("Settings", self.settingsViewModel.settings.plugins.usb_keyboard)
       
       
-      
-      // var keyboard = self.settings.settings.plugins.usb_keyboard.profiles.<self.activeProfileView()?>.map();
-      
-      // self.board(new boardViewModel(keyboard));
-      
+      self.activeProfileName = self.settingsViewModel.settings.plugins.usb_keyboard.active_profile;
+      self.profiles(self.settingsViewModel.settings.plugins.usb_keyboard.profiles)
+    }
+    
+    self.onSettingsBeforeSave = function() {
+      // self.settingsViewModel.settings.plugins.usb_keyboard.profiles[self.activeProfileName()]
+      console.log("Settings", self.settingsViewModel.settings.plugins.usb_keyboard)
     }
     
     self.onDataUpdaterPluginMessage = function (plugin, data) {
@@ -256,13 +64,16 @@ $(function() {
         return;
       }
       console.log("Data ", plugin, data);
-      self.activeProfileView().keyboard().rows()[data["row"]].keys.splice(data["key"], 1, data["name"]);
+      // TODO:  Fix this!
+      
+      console.log("self.profiles ", self.profiles);
+      console.log("self.profiles()", self.profiles());
+      
+      
+      self.profiles()[data["profile"]].keyboard()[data["row"]].row().splice(data["column"], 1, data["name"]);
+      self.profiles()[data["profile"]].keyboard()[data["row"]].row.valueHasMutated();
+          
     }
-    
-    // self.onEventPlugin_usb_keyboard_key_event = function(payload) {
-    //   console.log("Key Pressed! ", payload)
-    // }
-    
     
     ko.bindingHandlers['keyvalue'] = {
       makeTemplateValueAccessor: function(valueAccessor) {
@@ -275,12 +86,6 @@ $(function() {
           };
       },
       'init': function(element, valueAccessor, allBindings, viewModel, bindingContext) {
-        console.log("valueAccessor", valueAccessor)
-        console.log("valueAccessor()", valueAccessor())
-        console.log("ko.unwrap(valueAccessor())", ko.unwrap(valueAccessor()))
-        
-        
-        
         return ko.bindingHandlers['foreach']['init'](element, ko.bindingHandlers['keyvalue'].makeTemplateValueAccessor(valueAccessor));
       },
       'update': function(element, valueAccessor, allBindings, viewModel, bindingContext) {

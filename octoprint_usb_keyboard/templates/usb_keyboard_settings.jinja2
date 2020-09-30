@@ -2,104 +2,95 @@
   USB Keyboard Settings
 </h2>
 
-<!-- <table class="profileTable">
-  <tr>
-    <td><strong>Active Profile:</strong></td>
-    <td data-bind="text: activeProfileName"></td>
-  </tr>
-  <tr>
-    <td><strong>Available Profiles:</strong></td>
-    <td><select class="profileSelect" data-bind="options: profileList, value: activeProfileName , css: profilesLockedClass, attr: {disabled: profilesLocked}"></select></td>
-    <td><button class="btn btn-primary" data-bind="click: createProfile, attr: {disabled: profilesLocked}">{{ _('+') }}</button></td>
-    <td><button class="btn fa fa-files-o" data-bind="click: duplicateProfile, attr: {disabled: profilesLocked}"></button></td>
-    <td><button data-bind="css: profilesLockedClass, click: toggleProfilesLock"></button></td>
-  </tr>
+<table>
+  <thead>
+    <tr>
+      <td><strong>Active Profile:</strong></td>
+      <td data-bind="text: activeProfileName"></td>
+      <!-- <td><select data-bind="options: profileNames,
+                             value: activeProfileName,
+                             optionsCaption: 'Choose...'"></select></td> -->
+    </tr>
+  </thead>
 </table>
 
-<div class="modal" id="myModal" data-bind="with: $root.editingProfileName">
+<div data-bind="keyvalue: profiles">
   <table>
     <tr>
-      <td><strong>Profile Name</strong></td>
-      <td><input data-bind="textInput: $root.editingProfileName"/></td>
+      <td><strong>Profile:</strong></td>
+      <td data-bind="text: key"></td>
+      <!-- <td><input data-bind="textInput: key"/></td>  DOESN'T WORK -->
     </tr>
-    <tr>
-      <td></td>
-      <td><button class="btn btn-success" data-bind="click: $root.saveProfile">Save Profile</button></td>
-
-      <td><button class="btn btn-danger" data-bind="click: $root.deleteProfile">Delete Profile</button></td>
+    <!-- <tr>
+      <td data-bind="text: value"></td>
+    </tr> -->
+  </table>
+  
+  <table data-bind="foreach: value.keyboard">
+    <tr data-bind="foreach: $data.row">
+      <!-- <td data-bind="text: $data"></td> -->
+      <td><button class="btn btn-default" id="keyboardKey" data-bind="text: $data, click: $root.configureKey.bind($data, $data, $parentContext.$index(), $index(), $parentContext), style: { opacity: $data == null ? 0.4 : 1.0 }"></button></td>
     </tr>
   </table>
-</div> -->
-
-<!-- ko with: activeProfileView -->
-
-<table class="controls" id="settings_dialog" data-bind="with: keyboard">
-  <thead>
-    <tr>
-      <td><strong>Key Mapping</strong></td>
-      <td>
-        <button data-bind="css: keyboardSizeLockedClass, click: toggleKeyboardSizeLock"></button>
-      </td>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        
-        <div id="keyboard">
-        <!-- ko foreach: rows -->
-        
-        <table>
-          <tbody>
+  
+  <table>
+    <tbody data-bind="keyvalue: value.commands">
+      <tr>
+        <td data-bind="text: key"></td>
+        <td>
+          <table>
             <tr>
-            <!-- ko foreach: keys -->
+              <td>Pressed</td>
               <td>
-                <button class="btn btn-default" id="keyboardKey" data-bind="text: $data, click: $root.configureKey.bind($data, $data, $parentContext.$index(), $index()), style: { opacity: $data == null ? 0.4 : 1.0 }"></button>
-                <!-- click: $root.configureKey.bind($data, $data, $index()), style: { opacity: $data == null ? 0.4 : 1.0 } -->
-              </td>
-            <!-- /ko -->
-              <td>
-                <button class="btn btn-primary" data-bind="click: addKey, attr: {disabled: $parent.keyboardSizeLocked}">{{ _('+') }}</button>
-                <button class="btn btn-danger" data-bind="click: deleteKey, attr: {disabled: $parent.keyboardSizeLocked}">{{ _('-') }}</button>
+                <table data-bind="foreach: value.pressed">
+                  <tr data-bind="keyvalue: $data">
+                    <td></td>
+                    <td data-bind="text: key"></td>
+                    <td data-bind="text: value"></td>
+                  </tr>
+                </table>
               </td>
             </tr>
-          </tbody>
-        </table>
-        <!-- /ko -->
-        <table>
-          <tbody>
             <tr>
+              <td>Released</td>
               <td>
-                <button class="btn btn-primary" data-bind="click: addRow, attr: {disabled: keyboardSizeLocked}">{{ _('+') }}</button>
-                <button class="btn btn-danger" data-bind="click: deleteRow, attr: {disabled: keyboardSizeLocked}">{{ _('-') }}</button>
+                <table data-bind="foreach: value.released">
+                  
+                  <tr data-bind="keyvalue: $data">
+                    <td></td>
+                    <td data-bind="text: key"></td>
+                    <td data-bind="text: value"></td>
+                  </tr>
+                </table>
               </td>
             </tr>
-          </tbody>
-        </table>
-      </div>
-      
-      </td>
-    </tr>
-  <tbody>
-</table>
+            <tr>
+              <td>Variable Values</td>
+              <td>
+                <table data-bind="keyvalue: value.variable_values">
+                  <tr>
+                    <td data-bind="text: key"></td>
+                    <td><input data-bind="textInput: value" /></td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        <td>
+      </tr>
+    <tbody>
+  </table>
 
+ <table>
+    <tbody data-bind="keyvalue: value.variables">
+      <tr>
+        <td data-bind="text: key"></td>
+        <td><input data-bind="textInput: value" /></td>
+      </tr>
+    <tbody>
+  </table>
 
-<table class="variables" id="settings_dialog">
-  <thead>
-    <tr>
-      <td><strong>Variable Configuration</strong></td>
-    </tr>
-  </thead>
-  <tbody data-bind="keyvalue: variables">
-    <tr>
-      <td data-bind="text: key"></td>
-      <td>
-        <input data-bind="textInput: value" /></p>
-      </td>
-      <td>
-        <button class="btn btn-danger" data-bind="click: $parent.deleteVariable.bind(key)">{{ _('-') }}</button>
-      </td>
-    </tr>
-  <tbody>
-</table>
-<!-- /ko -->
+</div>
+
+  
+

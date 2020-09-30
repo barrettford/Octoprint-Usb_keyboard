@@ -290,6 +290,16 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       active_profile="default",
       
       profiles={
+        "test":{
+          "commands":{
+          },
+          "keyboard":[
+            [None]
+          ],
+          "variables":{
+            
+          }
+        },
         "default":{
           "commands":{
             # **************************** Linux ******************************
@@ -344,16 +354,14 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
             "/":         {"pressed": [{"type":"printer", "gcode":["M104 S<hotend>","M140 S<bed>"]}]                                             },  # set hotend and bed
             "esc":       {"pressed": [{"type":"psu", "command":"toggle", "can_trigger_while_hot":False, "hotend_max":50 }]                      }
           },
-          "keyboard":{
-            "rows":[
-              {"keys":["esc", None, "tab", "="]},
-              {"keys":[None, "/", "*", "backspace"]},
-              {"keys":["7", "8", "9", "-"]},
-              {"keys":["4", "5", "6", "+"]},
-              {"keys":["1", "2", "3", None]},
-              {"keys":[None, "0", ".", "\\x03"]}
-            ]
-          },
+          "keyboard": [
+              {"row":["esc", None, "tab", "="]},
+              {"row":[None, "/", "*", "backspace"]},
+              {"row":["7", "8", "9", "-"]},
+              {"row":["4", "5", "6", "+"]},
+              {"row":["1", "2", "3", None]},
+              {"row":[None, "0", ".", "\\x03"]}
+          ],
           "variables":{
             "distance":"1",
             "bed":"60",
@@ -368,12 +376,12 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
   
   def get_api_commands(self):
           return dict(
-              key_discovery=["row", "key"]
+              key_discovery=["row", "column"]
           )
 
   def on_api_command(self, command, data):      
       if command == "key_discovery":
-        self._logger.info(f"key_discovery called, row is {data['row']}, key is {data['key']}")
+        self._logger.info(f"key_discovery called, row is {data['row']}, key is {data['column']}")
         self.key_discovery = data
 
   def on_api_get(self, request):
