@@ -1,0 +1,44 @@
+<template id='template-sfr-keyboard'>
+  <span>Keyboard</span><button data-bind="css: keyboardSizeLockedClass, click: toggleKeyboardSizeLock"></button>
+  <table>
+    <tbody>
+      <tr>
+        <td>
+        </td>
+      </tr>
+      <!-- ko foreach: keyboard -->
+      <tr>
+        <td>
+          <sfr-keyboard-row params='keys: $data.keys, row: $index, profile: $parentContext.$data.profile, keyboardSizeLocked: $parentContext.$data.keyboardSizeLocked'></sfr-keyboard-row>
+        </td>
+      </tr>
+      <!-- /ko -->
+      <tr>
+        <td>
+          <button class="btn btn-primary" data-bind="click: addRow, attr: {disabled: keyboardSizeLocked}">{{ _('+') }}</button>
+          <button class="btn btn-danger" data-bind="click: deleteRow, attr: {disabled: keyboardSizeLocked}">{{ _('-') }}</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</template>
+
+<template id="template-sfr-keyboard-row">
+  <table>
+    <tr>
+       <!-- ko foreach: keys -->
+      <td>
+        <sfr-keyboard-row-key params='text: $data, column: $index, row: $parent.row, profile: $parent.profile'></sfr-keyboard-row-key>
+      </td>
+      <!-- /ko -->
+      <td>
+        <button class='btn btn-primary' data-bind='click: addKey, attr: {disabled: keyboardSizeLocked}'>{{ _('+') }}</button>
+        <button class='btn btn-danger' data-bind='click: deleteKey, attr: {disabled: keyboardSizeLocked}'>{{ _('-') }}</button>
+      </td>
+    </tr>
+  </table>
+</template>
+
+<template id="template-sfr-keyboard-row-key">
+  <button class="btn btn-default" id="keyboardKey" data-bind="text: text, click: configureKey, style: { opacity: text == null ? 0.4 : 1.0 }"></button>
+</template>

@@ -1,3 +1,15 @@
+<!-- </template id='sfr-keyboard-key-template'>
+  <strong>[Button]</strong>
+  <button class="btn btn-default" data-bind="text: keyText, click: configureKey, style: { opacity: $data == null ? 0.4 : 1.0 }"></button>
+</template> -->
+
+{% include 'template_sfr_keyboard.jinja2' %}
+{% include 'template_sfr_variables.jinja2' %}
+
+
+
+
+
 <h2>
   USB Keyboard Settings
 </h2>
@@ -26,14 +38,12 @@
     </tr> -->
   </table>
   
-  <table data-bind="foreach: value.keyboard">
-    <tr data-bind="foreach: $data.row">
-      <!-- <td data-bind="text: $data"></td> -->
-      <td><button class="btn btn-default" id="keyboardKey" data-bind="text: $data, click: $root.configureKey.bind($data, $data, $parentContext.$index(), $index(), $parentContext), style: { opacity: $data == null ? 0.4 : 1.0 }"></button></td>
-    </tr>
-  </table>
   
-  <table>
+  <!-- <span data-bind="text: key"></span> -->
+  <sfr-keyboard params='keyboard: value.keyboard, profile: key'></sfr-keyboard>
+  <sfr-variables params='variables: value.variables, profile: key, parent: $parent, parentContext: $parentContext'></sfr-variables>
+  
+  <!-- <table>
     <tbody data-bind="keyvalue: value.commands">
       <tr>
         <td data-bind="text: key"></td>
@@ -55,7 +65,7 @@
               <td>Released</td>
               <td>
                 <table data-bind="foreach: value.released">
-                  
+
                   <tr data-bind="keyvalue: $data">
                     <td></td>
                     <td data-bind="text: key"></td>
@@ -79,16 +89,17 @@
         <td>
       </tr>
     <tbody>
-  </table>
+  </table> -->
+  <!-- <span>Variables</span>
 
- <table>
+  <table>
     <tbody data-bind="keyvalue: value.variables">
       <tr>
         <td data-bind="text: key"></td>
         <td><input data-bind="textInput: value" /></td>
       </tr>
     <tbody>
-  </table>
+  </table> -->
 
 </div>
 

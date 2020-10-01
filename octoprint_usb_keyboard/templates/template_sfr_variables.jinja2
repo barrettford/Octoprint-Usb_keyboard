@@ -1,0 +1,15 @@
+<template id='template-sfr-variables'>
+  <span>Variables</span><button data-bind="css: variablesLockedClass, click: toggleVariablesLock"></button>
+
+  <table>
+    <tbody data-bind="keyvalue: variables">
+      <tr>
+        <td data-bind="text: key"></td>
+        <td><input data-bind="textInput: value, attr: {disabled: $parent.variablesLocked}" /></td>
+        <td>
+          <button class="btn btn-danger" data-bind="click: $parent.deleteVariable.bind(key), attr: {disabled: $parent.variablesLocked}">{{ _('-') }}</button>
+        </td>
+      </tr>
+    <tbody>
+  </table>
+</template>

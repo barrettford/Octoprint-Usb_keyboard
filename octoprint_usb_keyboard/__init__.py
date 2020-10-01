@@ -294,7 +294,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
           "commands":{
           },
           "keyboard":[
-            [None]
+            {"keys":[None]}
           ],
           "variables":{
             
@@ -355,12 +355,12 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
             "esc":       {"pressed": [{"type":"psu", "command":"toggle", "can_trigger_while_hot":False, "hotend_max":50 }]                      }
           },
           "keyboard": [
-              {"row":["esc", None, "tab", "="]},
-              {"row":[None, "/", "*", "backspace"]},
-              {"row":["7", "8", "9", "-"]},
-              {"row":["4", "5", "6", "+"]},
-              {"row":["1", "2", "3", None]},
-              {"row":[None, "0", ".", "\\x03"]}
+              {"keys":["esc", None, "tab", "="]},
+              {"keys":[None, "/", "*", "backspace"]},
+              {"keys":["7", "8", "9", "-"]},
+              {"keys":["4", "5", "6", "+"]},
+              {"keys":["1", "2", "3", None]},
+              {"keys":[None, "0", ".", "\\x03"]}
           ],
           "variables":{
             "distance":"1",
@@ -394,6 +394,8 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     # core UI here.
     return dict(
       js=["js/usb_keyboard.js"],
+      # clientjs=['js/requre.js'],
+      # jsclient=['js/requre.js'],
       css=["css/usb_keyboard.css"],
       # less=["less/usb_keyboard.less"]
     )
