@@ -150,6 +150,13 @@ $(function() {
 
       this.addVariable = function() {
         console.log("before adding variables", self.variables())
+        
+        if (self.newVariableKey() == null || self.newVariableValue() == null) {
+          console.log("Can't have null variables!")
+          
+          return
+        }
+        
 
         var variables = self.variables()
         variables[self.newVariableKey()] = self.newVariableValue()
