@@ -126,30 +126,29 @@ $(function() {
     function VariablesViewModel(params) {
       var self = this
       console.log("VariablesViewModel raw", params)
-      console.log("VariablesViewModel self", self)
       
       // self.variables = ko.observable(params.variables)
       self.newVariableKey = ko.observable(null)
       self.newVariableValue = ko.observable(null)
       
-      self.variables = ko.observable(params.variables)
+      self.variables = new ko.observableDictionary(params.variables)
       
       self.variablesLocked = ko.observable(true);
+      console.log("VariablesViewModel self", self)
 
       this.deleteVariable = function(variable) {
-        console.log("before deleting variables", self.variables())
-        var variables = self.variables()
-        delete variables[variable.key]
+        console.log("before deleting variables", self.variables)
+        // var variables = self.variables()
+        // delete variables[variable.key]
         
-        
-        self.variables(variables)
+        self.variables.remove(variable.key())
         // delete self.variables()[variable.key]
         // self.variables.valueHasMutated()
-        console.log("after deleting variables", self.variables())
+        console.log("after deleting variables", self.variables)
       }
 
       this.addVariable = function() {
-        console.log("before adding variables", self.variables())
+        console.log("before adding variables", self.variables)
         
         if (self.newVariableKey() == null || self.newVariableValue() == null) {
           console.log("Can't have null variables!")
@@ -157,11 +156,11 @@ $(function() {
           return
         }
         
-
-        var variables = self.variables()
-        variables[self.newVariableKey()] = self.newVariableValue()
+        //
+        // var variables = self.variables()
+        // variables[self.newVariableKey()] = self.newVariableValue()
         
-        self.variables(variables)
+        self.variables.set(self.newVariableKey(), self.newVariableValue())
         
         // self.variables[self.newVariableKey()] = self.newVariableValue
 
@@ -171,7 +170,7 @@ $(function() {
 
         // delete self.variables()[variable.key]
         // self.variables.valueHasMutated()
-        console.log("after adding variables", self.variables())
+        console.log("after adding variables", self.variables)
       }
       
       self.variablesLockedClass = ko.pureComputed(function() {
@@ -189,6 +188,23 @@ $(function() {
       template: { element: 'template-sfr-variables' }
     });
     
+    function ProfileViewModel(params) {
+      var self = this
+      console.log("ProfileViewModel raw", params)
+      console.log("ProfileViewModel self", self)
+      
+      self.profile = params.profile
+      self.commands = params.fields().commands
+      self.variables = params.fields().variables
+      self.keyboard = params.fields().keyboard
+
+      // self.variables = params.fields.get("variables")
+    }
+    
+    ko.components.register('sfr-profile', {
+      viewModel: ProfileViewModel,
+      template: { element: 'template-sfr-profile' }
+    });
     // self.profileNames = ko.computed(function() {
 //       return Object.keys(self.profiles())
 //     }).extend({ notify: 'always' });
@@ -196,15 +212,15 @@ $(function() {
     
     
     
-
+    self.profiles = ko.observableDictionary()
     self.onBeforeBinding = function() {
       console.log("Settings", self.settingsViewModel.settings.plugins.usb_keyboard)
       
       
       self.activeProfileName = self.settingsViewModel.settings.plugins.usb_keyboard.active_profile;
-      self.profiles = self.settingsViewModel.settings.plugins.usb_keyboard.profiles
+      // self.profiles = new ko.observableDictionary(self.settingsViewModel.settings.plugins.usb_keyboard.profiles)
       
-      // self.profiles(self.settingsViewModel.settings.plugins.usb_keyboard.profiles)
+      self.profiles.pushAll(self.settingsViewModel.settings.plugins.usb_keyboard.profiles)
     }
     
     self.onSettingsBeforeSave = function() {
@@ -232,10 +248,6 @@ $(function() {
     ko.bindingHandlers['keyvalue'] = {
       makeTemplateValueAccessor: function(valueAccessor) {
           return function() {
-              console.log("keyvalue valueAccessor wrapped", valueAccessor())
-              console.log("keyvalue valueAccessor unwrapped", ko.unwrap(valueAccessor()))
-            
-              // var values = ko.unwrap(valueAccessor());
               var values = ko.unwrap(valueAccessor());
               var array = [];
               for (var key in values)
@@ -250,52 +262,6 @@ $(function() {
         return ko.bindingHandlers['foreach']['update'](element, ko.bindingHandlers['keyvalue'].makeTemplateValueAccessor(valueAccessor), allBindings, viewModel, bindingContext);
       }
     };
-    
-    var templateFromUrlLoader = {
-      loadTemplate: function(name, templateConfig, callback) {
-        if (templateConfig.fromUrl) {
-          // Uses jQuery's ajax facility to load the markup from a file
-          var fullUrl = '/plugins/usb_keyboard/static/js/templates/' + templateConfig.fromUrl + '?cacheAge=' + templateConfig.maxCacheAge;
-          $.get(fullUrl, function(markupString) {
-              // We need an array of DOM nodes, not a string.
-              // We can use the default loader to convert to the
-              // required format.
-              ko.components.defaultLoader.loadTemplate(name, markupString, callback);
-          });
-        } else {
-          // Unrecognized config format. Let another loader handle it.
-          callback(null);
-        }
-      }
-    };
- 
-    // Register it
-    ko.components.loaders.unshift(templateFromUrlLoader);
-    
-    var viewModelCustomLoader = {
-      loadViewModel: function(name, viewModelConfig, callback) {
-        if (viewModelConfig.viaLoader) {
-          // You could use arbitrary logic, e.g., a third-party
-          // code loader, to asynchronously supply the constructor.
-          // For this example, just use a hard-coded constructor function.
-          var viewModelConstructor = function(params) {
-            console.log("Via Loader Params", params)
-              this.prop1 = 123;
-          };
- 
-          // We need a createViewModel function, not a plain constructor.
-          // We can use the default loader to convert to the
-          // required format.
-          ko.components.defaultLoader.loadViewModel(name, viewModelConstructor, callback);
-        } else {
-          // Unrecognized config format. Let another loader handle it.
-          callback(null);
-        }
-      }
-    };
- 
-    // Register it
-    ko.components.loaders.unshift(viewModelCustomLoader);
   }
 
   /* view model class, parameters for constructor, container to bind to

@@ -3,6 +3,8 @@
   <button class="btn btn-default" data-bind="text: keyText, click: configureKey, style: { opacity: $data == null ? 0.4 : 1.0 }"></button>
 </template> -->
 
+{% include 'template_sfr_profile.jinja2' %}
+
 {% include 'template_sfr_keyboard.jinja2' %}
 {% include 'template_sfr_variables.jinja2' %}
 
@@ -26,22 +28,19 @@
   </thead>
 </table>
 
-<div data-bind="keyvalue: profiles">
-  <table>
-    <tr>
-      <td><strong>Profile:</strong></td>
-      <td data-bind="text: key"></td>
-      <!-- <td><input data-bind="textInput: key"/></td>  DOESN'T WORK -->
-    </tr>
-    <!-- <tr>
-      <td data-bind="text: value"></td>
-    </tr> -->
-  </table>
+<ul data-bind="foreach: profiles.items">
+    <li>
+        <sfr-profile params='fields: value, profile: key'></sfr-profile>
+    </li>
+</ul>
+  
+  
+
   
   
   <!-- <span data-bind="text: key"></span> -->
-  <sfr-keyboard params='keyboard: value.keyboard, profile: key'></sfr-keyboard>
-  <sfr-variables params='variables: value.variables, profile: key, parent: $parent, parentContext: $parentContext'></sfr-variables>
+  <!-- <sfr-keyboard params='keyboard: value, profile: key'></sfr-keyboard> -->
+  <!-- <sfr-variables params='variables: value.variables, profile: key, parent: $parent, parentContext: $parentContext'></sfr-variables> -->
   
   <!-- <table>
     <tbody data-bind="keyvalue: value.commands">
@@ -101,7 +100,7 @@
     <tbody>
   </table> -->
 
-</div>
+<!-- </div> -->
 
   
 

@@ -1,0 +1,17 @@
+<template id='template-sfr-profile'>
+  <span><strong>Profile</strong></span> <span data-bind="text: profile"></span>
+  
+  <table>
+    <tr>
+      <td>
+        <sfr-keyboard params='keyboard: keyboard, profile: profile'></sfr-keyboard>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <sfr-variables params='variables: variables, profile: profile'></sfr-variables>
+      </td>
+    </tr>
+  </table>
+
+</template>
