@@ -10,6 +10,15 @@
           <button class="btn btn-danger" data-bind="click: $parent.deleteVariable.bind(key), attr: {disabled: $parent.variablesLocked}">{{ _('-') }}</button>
         </td>
       </tr>
+    </tbody>
     <tbody>
+      <tr>
+        <td><input data-bind="textInput: newVariableKey, attr: {disabled: variablesLocked}" /></td>
+        <td><input data-bind="textInput: newVariableValue, attr: {disabled: variablesLocked}" /></td>
+        <td>
+          <button class="btn btn-primary" data-bind="click: addVariable, attr: {disabled: variablesLocked}">{{ _('+') }}</button>
+        </td>
+      </tr>
+    </tbody>
   </table>
 </template>

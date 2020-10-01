@@ -129,44 +129,51 @@ $(function() {
       console.log("VariablesViewModel self", self)
       
       // self.variables = ko.observable(params.variables)
-      self.variables = params.variables
+      self.newVariableKey = ko.observable(null)
+      self.newVariableValue = ko.observable(null)
+      
+      self.variables = ko.observable(params.variables)
       
       self.variablesLocked = ko.observable(true);
-      
-      self.toggleVariablesLock = function() {
-        self.variablesLocked(!self.variablesLocked());
-        console.log("Toggling variables lock to " + (self.variablesLocked() ? 'locked' : 'unlocked'))
-      }
 
-      self.variablesLockedClass = ko.pureComputed(function() {
-        return self.variablesLocked() ? 'fa fa-lock' : 'fa fa-unlock';
-      }).extend({ notify: 'always' });
-      
       this.deleteVariable = function(variable) {
-        console.log("before deleting variables", self.variables)
-        var variables = self.variables
+        console.log("before deleting variables", self.variables())
+        var variables = self.variables()
         delete variables[variable.key]
         
         
-        self.variables = variables
+        self.variables(variables)
         // delete self.variables()[variable.key]
         // self.variables.valueHasMutated()
-        console.log("after deleting variables", self.variables)
+        console.log("after deleting variables", self.variables())
       }
 
       this.addVariable = function() {
         console.log("before adding variables", self.variables())
 
-        var variables = self.variables
+        var variables = self.variables()
         variables[self.newVariableKey()] = self.newVariableValue()
+        
+        self.variables(variables)
+        
+        // self.variables[self.newVariableKey()] = self.newVariableValue
 
         self.newVariableKey(null)
         self.newVariableValue(null)
-        self.variables(variables)
+        // self.variables(variables)
 
         // delete self.variables()[variable.key]
         // self.variables.valueHasMutated()
         console.log("after adding variables", self.variables())
+      }
+      
+      self.variablesLockedClass = ko.pureComputed(function() {
+        return self.variablesLocked() ? 'fa fa-lock' : 'fa fa-unlock';
+      }).extend({ notify: 'always' });
+      
+      self.toggleVariablesLock = function() {
+        self.variablesLocked(!self.variablesLocked());
+        console.log("Toggling variables lock to " + (self.variablesLocked() ? 'locked' : 'unlocked'))
       }
     }
     
