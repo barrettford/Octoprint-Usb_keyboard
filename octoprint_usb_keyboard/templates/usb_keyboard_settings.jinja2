@@ -1,14 +1,4 @@
-<!-- </template id='sfr-keyboard-key-template'>
-  <strong>[Button]</strong>
-  <button class="btn btn-default" data-bind="text: keyText, click: configureKey, style: { opacity: $data == null ? 0.4 : 1.0 }"></button>
-</template> -->
-
-{% include 'template_sfr_keyboard.jinja2' %}
-{% include 'template_sfr_variables.jinja2' %}
-
-
-
-
+{% include 'template_sfr_profile.jinja2' %}
 
 <h2>
   USB Keyboard Settings
@@ -18,90 +8,15 @@
   <thead>
     <tr>
       <td><strong>Active Profile:</strong></td>
-      <td data-bind="text: activeProfileName"></td>
-      <!-- <td><select data-bind="options: profileNames,
-                             value: activeProfileName,
-                             optionsCaption: 'Choose...'"></select></td> -->
+      <td><select data-bind="options: profileNames, value: activeProfileName"></select></td>
+      <td><button class="btn btn-primary" data-bind="click: createProfile">{{ _('+') }}</button></td>
     </tr>
+    <tr>
+      <td data-bind="visible: dupeDetected"><span><strong>*** Duplicate profile name detected! ***</strong></span></td>
+    <tr>
   </thead>
 </table>
-
-<div data-bind="keyvalue: profiles">
-  <table>
-    <tr>
-      <td><strong>Profile:</strong></td>
-      <td data-bind="text: key"></td>
-      <!-- <td><input data-bind="textInput: key"/></td>  DOESN'T WORK -->
-    </tr>
-    <!-- <tr>
-      <td data-bind="text: value"></td>
-    </tr> -->
-  </table>
-  
-  
-  <!-- <span data-bind="text: key"></span> -->
-  <sfr-keyboard params='keyboard: value.keyboard, profile: key'></sfr-keyboard>
-  <sfr-variables params='variables: value.variables, profile: key, parent: $parent, parentContext: $parentContext'></sfr-variables>
-  
-  <!-- <table>
-    <tbody data-bind="keyvalue: value.commands">
-      <tr>
-        <td data-bind="text: key"></td>
-        <td>
-          <table>
-            <tr>
-              <td>Pressed</td>
-              <td>
-                <table data-bind="foreach: value.pressed">
-                  <tr data-bind="keyvalue: $data">
-                    <td></td>
-                    <td data-bind="text: key"></td>
-                    <td data-bind="text: value"></td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-            <tr>
-              <td>Released</td>
-              <td>
-                <table data-bind="foreach: value.released">
-
-                  <tr data-bind="keyvalue: $data">
-                    <td></td>
-                    <td data-bind="text: key"></td>
-                    <td data-bind="text: value"></td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-            <tr>
-              <td>Variable Values</td>
-              <td>
-                <table data-bind="keyvalue: value.variable_values">
-                  <tr>
-                    <td data-bind="text: key"></td>
-                    <td><input data-bind="textInput: value" /></td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-          </table>
-        <td>
-      </tr>
-    <tbody>
-  </table> -->
-  <!-- <span>Variables</span>
-
-  <table>
-    <tbody data-bind="keyvalue: value.variables">
-      <tr>
-        <td data-bind="text: key"></td>
-        <td><input data-bind="textInput: value" /></td>
-      </tr>
-    <tbody>
-  </table> -->
-
+<hr>
+<div data-bind="foreach: profiles">
+  <sfr-profile params='profileObject: $data, profileArray: $parent.profiles, profileNames: $parent.profileNames, activeProfileName: $parent.activeProfileName' data-bind="visible: $data.key() == $parent.activeProfileName()"></sfr-profile>
 </div>
-
-  
-

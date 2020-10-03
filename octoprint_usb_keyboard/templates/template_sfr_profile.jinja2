@@ -1,0 +1,20 @@
+{% include 'template_sfr_keyboard.jinja2' %}
+{% include 'template_sfr_variables.jinja2' %}
+
+<template id='template-sfr-profile'>
+  <span><strong>Profile</strong></span><button data-bind="css: lockedClass, click: toggleLock"></button>
+  <table>
+    <tr>
+      <td><input data-bind="textInput: newProfileName, attr: {disabled: locked}"/></td>
+      <td><button class="btn btn-default fa fa-pencil" data-bind="click: editProfileName, attr: {disabled: locked}"></button></td>
+      <td><button class="btn btn-default fa fa-files-o" data-bind="click: duplicateProfile, attr: {disabled: locked}"></button></td>
+      <td><button class="btn btn-danger" data-bind="click: deleteProfile, attr: {disabled: locked}">{{ _('-') }}</button></td>
+    </tr>
+    <!-- <tr>
+      <td data-bind="visible: dupeDetected"><span><strong>*** Duplicate profile name detected! ***</strong></span></td>
+    <tr> -->
+  </table>
+
+  <sfr-keyboard params='keyboard: keyboard, profile: profile'></sfr-keyboard>
+  <sfr-variables params='variables: variables, profile: profile'></sfr-variables>
+</template>

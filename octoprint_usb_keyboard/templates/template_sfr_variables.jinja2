@@ -1,22 +1,25 @@
 <template id='template-sfr-variables'>
-  <span>Variables</span><button data-bind="css: variablesLockedClass, click: toggleVariablesLock"></button>
+  <span><strong>Variables</strong></span><button data-bind="css: lockedClass, click: toggleLock"></button>
 
   <table>
-    <tbody data-bind="keyvalue: variables">
+    <tbody>
       <tr>
-        <td data-bind="text: key"></td>
-        <td><input data-bind="textInput: value, attr: {disabled: $parent.variablesLocked}" /></td>
+        <td><input data-bind="textInput: newVariableKey, attr: {disabled: locked}" /></td>
+        <td><input data-bind="textInput: newVariableValue, attr: {disabled: locked}" /></td>
         <td>
-          <button class="btn btn-danger" data-bind="click: $parent.deleteVariable.bind(key), attr: {disabled: $parent.variablesLocked}">{{ _('-') }}</button>
+          <button class="btn btn-primary" data-bind="click: addVariable, attr: {disabled: locked}">{{ _('+') }}</button>
+        </td>
+        <td data-bind="visible: dupeDetected">
+          <span><strong>No Duplicates Keys!</strong></span>
         </td>
       </tr>
     </tbody>
-    <tbody>
+    <tbody data-bind="foreach: variables">
       <tr>
-        <td><input data-bind="textInput: newVariableKey, attr: {disabled: variablesLocked}" /></td>
-        <td><input data-bind="textInput: newVariableValue, attr: {disabled: variablesLocked}" /></td>
+        <td data-bind="text: $data.key"></td>
+        <td><input data-bind="textInput: value, attr: {disabled: $parent.locked}" /></td>
         <td>
-          <button class="btn btn-primary" data-bind="click: addVariable, attr: {disabled: variablesLocked}">{{ _('+') }}</button>
+          <button class="btn btn-danger" data-bind="click: $parent.deleteVariable.bind(key, $index), attr: {disabled: $parent.locked}">{{ _('-') }}</button>
         </td>
       </tr>
     </tbody>

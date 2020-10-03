@@ -15,31 +15,35 @@ $(function() {
     // self.settingsViewModel = parameters[1];
     
     self.settingsViewModel = parameters[0];
-    
     self.activeProfileName = ko.observable();
     
-    
-    
+    function Lockable(description) {
+      var self = this
+      
+      self.locked = ko.observable(true);
+      self.description = description
+      
+      self.toggleLock = function() {
+        self.locked(!self.locked());
+        console.log("Toggling " + description + " lock to " + (self.locked() ? 'locked' : 'unlocked'))
+      }
+      
+      self.lockedClass = ko.pureComputed(function() {
+        return self.locked() ? 'fa fa-lock' : 'fa fa-unlock';
+      });// .extend({ notify: 'always' });
+    }
     
     function KeyboardViewModel(params) {
       var self = this;
+      Lockable.call(self, "keyboard")
+      
       // console.log("Keyboard View Model raw", params)
       // console.log("Keyboard View Model self", self)
 
       self.keyboard = params.keyboard
       self.profile = params.profile
 
-      self.keyboardSizeLocked = ko.observable(true);
       self.keyboardScaleMultiplier = ko.observable();
-
-      self.toggleKeyboardSizeLock = function() {
-        self.keyboardSizeLocked(!self.keyboardSizeLocked());
-        console.log("Toggling keyboard size lock to " + (self.keyboardSizeLocked() ? 'locked' : 'unlocked'))
-      }
-
-      self.keyboardSizeLockedClass = ko.pureComputed(function() {
-        return self.keyboardSizeLocked() ? 'fa fa-lock' : 'fa fa-unlock';
-      }).extend({ notify: 'always' });
 
       // this will be called when the user clicks the "+ Row" button and add a new row of data
       self.addRow = function() {
@@ -61,8 +65,7 @@ $(function() {
       viewModel: KeyboardViewModel,
       template: { element: 'template-sfr-keyboard' }
     });
-    
-        
+
     function KeyboardRowViewModel(params) {
       var self = this
       // console.log("Keyboard Row View Model raw", params)
@@ -70,8 +73,8 @@ $(function() {
       
       self.keys = params.keys
       self.profile = params.profile
-      self.row = params.row()
-      self.keyboardSizeLocked = params.keyboardSizeLocked
+      self.row = params.row
+      self.locked = params.locked
       
       self.addKey = function() {
         console.log("Clicked + key");
@@ -99,14 +102,15 @@ $(function() {
       self.text = ko.observable(params.text)
       self.profile = params.profile
       self.row = params.row
-      self.column = params.column()
+      self.column = params.column
+      self.locked = params.locked
       
       
       self.configureKey = function() {
-        console.log("Key '" + self.text() + "' pressed, [" + self.row + "][" + self.column + "] profile = " + self.profile)
+        console.log("Key '" + self.text() + "' pressed, [" + self.row() + "][" + self.column() + "] profile = " + self.profile())
       
         // TODO:  DON'T LOSE THIS
-        OctoPrint.simpleApiCommand('usb_keyboard', 'key_discovery', {"row":self.row, "column":self.column, "profile":self.profile});
+        OctoPrint.simpleApiCommand('usb_keyboard', 'key_discovery', {"row":self.row(), "column":self.column(), "profile":self.profile()});
 
         // self.keyDetectionBinding(null)
         // self.settings.settings.plugins.usb_keyboard.key_discovery(null)
@@ -125,55 +129,37 @@ $(function() {
     
     function VariablesViewModel(params) {
       var self = this
-      console.log("VariablesViewModel raw", params)
-      console.log("VariablesViewModel self", self)
+      Lockable.call(self, "variables")
+
+      // console.log("VariablesViewModel raw", params)
+      // console.log("VariablesViewModel self", self)
       
-      // self.variables = ko.observable(params.variables)
       self.newVariableKey = ko.observable(null)
       self.newVariableValue = ko.observable(null)
+      self.dupeDetected = ko.observable(false)
+      self.variables = params.variables
       
-      self.variables = ko.observable(params.variables)
-      
-      self.variablesLocked = ko.observable(true);
-
-      this.deleteVariable = function(variable) {
+      this.deleteVariable = function(variable, index) {
         console.log("before deleting variables", self.variables())
-        var variables = self.variables()
-        delete variables[variable.key]
-        
-        
-        self.variables(variables)
-        // delete self.variables()[variable.key]
-        // self.variables.valueHasMutated()
+        self.variables.splice(index, 1)
+
         console.log("after deleting variables", self.variables())
       }
 
       this.addVariable = function() {
-        console.log("before adding variables", self.variables())
+        if (self.newVariableKey() == null || self.newVariableValue() == null) {
+          return
+        }
 
-        var variables = self.variables()
-        variables[self.newVariableKey()] = self.newVariableValue()
-        
-        self.variables(variables)
-        
-        // self.variables[self.newVariableKey()] = self.newVariableValue
+        self.dupeDetected(self.variables().some(function(value) {
+          return value.key() == self.newVariableKey()
+        }))
 
-        self.newVariableKey(null)
-        self.newVariableValue(null)
-        // self.variables(variables)
-
-        // delete self.variables()[variable.key]
-        // self.variables.valueHasMutated()
-        console.log("after adding variables", self.variables())
-      }
-      
-      self.variablesLockedClass = ko.pureComputed(function() {
-        return self.variablesLocked() ? 'fa fa-lock' : 'fa fa-unlock';
-      }).extend({ notify: 'always' });
-      
-      self.toggleVariablesLock = function() {
-        self.variablesLocked(!self.variablesLocked());
-        console.log("Toggling variables lock to " + (self.variablesLocked() ? 'locked' : 'unlocked'))
+        if (! self.dupeDetected()) {
+          self.variables.push({"key":ko.observable(self.newVariableKey()), "value":ko.observable(self.newVariableValue())})
+          self.newVariableKey(null)
+          self.newVariableValue(null)
+        }
       }
     }
     
@@ -182,17 +168,107 @@ $(function() {
       template: { element: 'template-sfr-variables' }
     });
     
-    // self.profileNames = ko.computed(function() {
-//       return Object.keys(self.profiles())
-//     }).extend({ notify: 'always' });
+    
+    function ProfileViewModel(params) {
+      var self = this
+      Lockable.call(self, "profile")
+            //
+      // console.log("ProfileViewModel raw", params)
+      // console.log("ProfileViewModel self", self)
+      
+      // self.variables = ko.observable(params.variables)
+      self.activeProfileName = params.activeProfileName
+      self.profile = params.profileObject.key
+      self.profileNames = params.profileNames
+      self.profileObject = params.profileObject
+      self.profileArray = params.profileArray
+      self.commands = params.profileObject.value.commands
+      self.variables = params.profileObject.value.variables
+      self.keyboard = params.profileObject.value.keyboard
+      self.dupeDetected = ko.observable(false)
+      
+      self.newProfileName = ko.observable(self.profile())
+      
+      self.duplicateProfile = function() {
+        var copyName = self.profile() + " copy"
+        
+        self.dupeDetected(self.profileNames().some(function(value) {
+          return value() == copyName
+        }))
+        
+        if (! self.dupeDetected()) {
+          var newProfile = ko.mapping.fromJS(ko.toJS(self.profileObject))
+          newProfile.key(copyName)
+          
+          self.profileArray.push(newProfile)
+          self.activeProfileName(copyName)
+        }
+      };
+      
+      self.editProfileName = function() {
+        
+        if (self.profile() != self.newProfileName()) {
+          self.dupeDetected(self.profileNames().some(function(value) {
+            return value() == self.newProfileName()
+          }))
+          
+          if (! self.dupeDetected()) {
+            self.profile(self.newProfileName())
+            self.activeProfileName(self.newProfileName())
+          }
+        }
+      }
+      
+      self.deleteProfile = function() {
+        self.profileArray.remove(self.profileObject)
+      }
+      
+    }
+    
+    ko.components.register('sfr-profile', {
+      viewModel: ProfileViewModel,
+      template: { element: 'template-sfr-profile' }
+    });
+    
+    self.dupeDetected = ko.observable(false)
+    self.createProfile = function() {
+      var newProfileName = "New Profile"
+      
+      var dupeDetected = self.profileNames().some(function(value) {
+        return value() == newProfileName
+      })
+      
+      if (! dupeDetected) {
+        var newProfile = ko.mapping.fromJS({"key":newProfileName,
+        "value":{ "commands":[],
+                  "keyboard":[
+                    {"keys":[null]}
+                  ],
+                  "variables":[]
+                }});
+        newProfile.key(newProfileName)
+        
+        self.profiles.push(newProfile)
+        self.activeProfileName(newProfileName)
+      }
+    };
     
     
-    
+    self.profileNames = ko.pureComputed(function() {
+      var profileNames = []
+      
+      function collectProfileNames(value, index, array) {
+        profileNames.push(value["key"])
+      }
+      
+      self.profiles().forEach(collectProfileNames);
+
+      return profileNames
+    });//.extend({ notify: 'always' });
     
 
     self.onBeforeBinding = function() {
       console.log("Settings", self.settingsViewModel.settings.plugins.usb_keyboard)
-      
       
       self.activeProfileName = self.settingsViewModel.settings.plugins.usb_keyboard.active_profile;
       self.profiles = self.settingsViewModel.settings.plugins.usb_keyboard.profiles
@@ -201,34 +277,57 @@ $(function() {
     }
     
     self.onSettingsBeforeSave = function() {
-      // self.settingsViewModel.settings.plugins.usb_keyboard.profiles[self.activeProfileName()]
-      console.log("Settings", self.settingsViewModel.settings.plugins.usb_keyboard)
+      console.log("Settings saving", self.settingsViewModel.settings.plugins.usb_keyboard)
+      
+      
+      // TODO: remove duplicate profile names
+      // self.settingsViewModel.settings.plugins.usb_keyboard.profiles = self.profiles;
     }
     
+    self.onSettingsHidden = function() {
+      console.log("Settings closed", self.settingsViewModel.settings.plugins.usb_keyboard)
+      
+      $('#settings_plugin_usb_keyboard button.fa-unlock').trigger('click');
+    }
+    
+    // Key Discovery coming back
     self.onDataUpdaterPluginMessage = function (plugin, data) {
       if (plugin !== "usb_keyboard") {
         return;
       }
-      console.log("Data ", plugin, data);
+      // console.log("Data", plugin, data);
       // TODO:  Fix this!
       
-      console.log("self.profiles ", self.profiles);
+      var row = data["row"]
+      var column = data["column"]
+      var keyName = data["name"]
+      var profile = data["profile"]
+      
       // console.log("self.profiles()", self.profiles());
+      // console.log("self.profiles()", self.profiles());
+      // console.log("self.profiles()", self.profiles()[data["profile"]].value.keyboard()[data["row"]].keys()[data["column"]] );
       
-      console.log("Key targetted ", self.profiles[data["profile"]].keyboard()[data["row"]].keys()[data["column"]] );
+      var targetedProfileIndex = 0
+            
+      function findTargetedProfile(value, index, array) {
+        if (value.key() == profile) {
+          targetedProfileIndex = index;
+        }
+      }
+      self.profiles().forEach(findTargetedProfile);
       
+      console.log("Key targeted ", self.profiles()[targetedProfileIndex].value.keyboard()[row].keys()[column]);
       
-      // self.profiles[data["profile"]].keyboard()[data["row"]].keys().splice(data["column"], 1, data["name"]);
+      self.profiles()[targetedProfileIndex].value.keyboard()[row].keys.splice(column, 1, keyName)
+      // self.profiles()[data["profile"]].value.keyboard()[data["row"]].keys.splice(data["column"], 1, data["name"]);
+      
+      // self.profiles[data["profile"]].keyboard()[data["row"]].keys.splice(data["column"], 1, data["name"]);
       // self.profiles[data["profile"]].keyboard()[data["row"]].keys.valueHasMutated();
     }
     
     ko.bindingHandlers['keyvalue'] = {
       makeTemplateValueAccessor: function(valueAccessor) {
           return function() {
-              console.log("keyvalue valueAccessor wrapped", valueAccessor())
-              console.log("keyvalue valueAccessor unwrapped", ko.unwrap(valueAccessor()))
-            
-              // var values = ko.unwrap(valueAccessor());
               var values = ko.unwrap(valueAccessor());
               var array = [];
               for (var key in values)
@@ -244,51 +343,51 @@ $(function() {
       }
     };
     
-    var templateFromUrlLoader = {
-      loadTemplate: function(name, templateConfig, callback) {
-        if (templateConfig.fromUrl) {
-          // Uses jQuery's ajax facility to load the markup from a file
-          var fullUrl = '/plugins/usb_keyboard/static/js/templates/' + templateConfig.fromUrl + '?cacheAge=' + templateConfig.maxCacheAge;
-          $.get(fullUrl, function(markupString) {
-              // We need an array of DOM nodes, not a string.
-              // We can use the default loader to convert to the
-              // required format.
-              ko.components.defaultLoader.loadTemplate(name, markupString, callback);
-          });
-        } else {
-          // Unrecognized config format. Let another loader handle it.
-          callback(null);
-        }
-      }
-    };
- 
-    // Register it
-    ko.components.loaders.unshift(templateFromUrlLoader);
-    
-    var viewModelCustomLoader = {
-      loadViewModel: function(name, viewModelConfig, callback) {
-        if (viewModelConfig.viaLoader) {
-          // You could use arbitrary logic, e.g., a third-party
-          // code loader, to asynchronously supply the constructor.
-          // For this example, just use a hard-coded constructor function.
-          var viewModelConstructor = function(params) {
-            console.log("Via Loader Params", params)
-              this.prop1 = 123;
-          };
- 
-          // We need a createViewModel function, not a plain constructor.
-          // We can use the default loader to convert to the
-          // required format.
-          ko.components.defaultLoader.loadViewModel(name, viewModelConstructor, callback);
-        } else {
-          // Unrecognized config format. Let another loader handle it.
-          callback(null);
-        }
-      }
-    };
- 
-    // Register it
-    ko.components.loaders.unshift(viewModelCustomLoader);
+    // var templateFromUrlLoader = {
+    //   loadTemplate: function(name, templateConfig, callback) {
+    //     if (templateConfig.fromUrl) {
+    //       // Uses jQuery's ajax facility to load the markup from a file
+    //       var fullUrl = '/plugins/usb_keyboard/static/js/templates/' + templateConfig.fromUrl + '?cacheAge=' + templateConfig.maxCacheAge;
+    //       $.get(fullUrl, function(markupString) {
+    //           // We need an array of DOM nodes, not a string.
+    //           // We can use the default loader to convert to the
+    //           // required format.
+    //           ko.components.defaultLoader.loadTemplate(name, markupString, callback);
+    //       });
+    //     } else {
+    //       // Unrecognized config format. Let another loader handle it.
+    //       callback(null);
+    //     }
+    //   }
+    // };
+    //
+    // // Register it
+    // ko.components.loaders.unshift(templateFromUrlLoader);
+    //
+    // var viewModelCustomLoader = {
+    //   loadViewModel: function(name, viewModelConfig, callback) {
+    //     if (viewModelConfig.viaLoader) {
+    //       // You could use arbitrary logic, e.g., a third-party
+    //       // code loader, to asynchronously supply the constructor.
+    //       // For this example, just use a hard-coded constructor function.
+    //       var viewModelConstructor = function(params) {
+    //         console.log("Via Loader Params", params)
+    //           this.prop1 = 123;
+    //       };
+    //
+    //       // We need a createViewModel function, not a plain constructor.
+    //       // We can use the default loader to convert to the
+    //       // required format.
+    //       ko.components.defaultLoader.loadViewModel(name, viewModelConstructor, callback);
+    //     } else {
+    //       // Unrecognized config format. Let another loader handle it.
+    //       callback(null);
+    //     }
+    //   }
+    // };
+    //
+    // // Register it
+    // ko.components.loaders.unshift(viewModelCustomLoader);
   }
 
   /* view model class, parameters for constructor, container to bind to

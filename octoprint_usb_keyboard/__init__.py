@@ -41,9 +41,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       for variable in vars_found:
         # print(f"variable '{variable}'")
         clean_variable = variable[1:-1]
-        # see https://github.com/OctoPrint/OctoPrint/blob/3ab84ed7e4c3aaaf71fe0f184b465f25d689f929/src/octoprint/plugin/__init__.py#L255
-        active_profile = self._settings.get(["active_profile"])
-        setting_var = self._settings.get(["profiles", active_profile, "variables", clean_variable], merged=False)
+        setting_var = self._variables[clean_variable]
         if setting_var is not None:
           sub_command = sub_command.replace(variable, str(setting_var))
         else:
@@ -72,10 +70,9 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         return
     
     
-    active_profile = self._settings.get(["active_profile"])
     # self._logger.info(f"Key '{key}' {key_state}")
     
-    commands = self._settings.get(["profiles", active_profile, "commands"])
+    commands = self._commands
     if not commands:
       # self._logger.info("Commands Empty......")
       return
@@ -109,7 +106,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
             saving_var = self.listening_variables[variable]
             if saving_var is not None:
               self._logger.info(f"Saving value '{saving_var}' to variable '{variable}'.")
-              self._settings.set(["profiles", active_profile, "variables", variable], saving_var)
+              self._variables[variable] = saving_var
               # self._settings.save() #TODO figure out if I really want to save them here
             else:
               self._logger.info(f"Found nothing to save to variable '{variable}'.")
@@ -121,7 +118,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       # handle if listening variables
       if self.listening_variables:
         self._logger.info(f"Listening for variables {self.listening_variables.keys()}.")
-        key_values = key_actions.get("variable_values", None)
+        key_values = key_actions.get("variables", None)
         
         if key_values:
           for variable in self.listening_variables:
@@ -176,18 +173,16 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
               self._logger.info(f"Found psu command for key '{key}'. Sending '{psu_command}'")
               psucontrol.PSUControl.turn_psu_on(psucontrol_info_impl)
             elif psu_is_on and desired_state < 1:
-              can_trigger_while_hot = current_action.get("can_trigger_while_hot", False)
               tools_too_hot_to_turn_off_psu = False
               hotend_max = current_action.get("hotend_max", 50)
+
+              printer_temps = self._printer.get_current_temperatures()
               
-              if not can_trigger_while_hot:
-                printer_temps = self._printer.get_current_temperatures()
-                
-                for tool, tool_temps in printer_temps.items():
-                  if tool.startswith("tool") and tool_temps.get("actual", 0) > hotend_max:
-                    tools_too_hot_to_turn_off_psu = True
-                    break
-              if can_trigger_while_hot or not tools_too_hot_to_turn_off_psu:
+              for tool, tool_temps in printer_temps.items():
+                if tool.startswith("tool") and tool_temps.get("actual", 0) > hotend_max:
+                  tools_too_hot_to_turn_off_psu = True
+                  break
+              if not tools_too_hot_to_turn_off_psu:
                 self._logger.info(f"Found psu command for key '{key}'. Sending '{psu_command}'")
                 psucontrol.PSUControl.turn_psu_off(psucontrol_info_impl)
               else:
@@ -245,18 +240,57 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
 #         for row in self._settings.get(['profiles', active_profile, 'keyboard', 'rows']):
 #           self._logger.info(f"Current Setting for {i}: {row['keys']}")
 #           i = i + 1
-        
 
 
   ##~~ StartupPlugin mixin
   
+  
+  def load_variables(self, variable_array):
+    
+    
+    # print(f"*************** VARIABLE ARRAY **************\n {variable_array}\n\n\n")
+    
+    converted_variables = {}
+    for variable in variable_array:
+      if variable and "key" in variable and "value" in variable and variable["value"] is not None:
+        converted_variables[variable["key"]] = variable["value"]
+    return converted_variables
+
+  def load_commands(self, command_array):
+    converted_commands = {}
+    for command in command_array:
+      if command and "key" in command and "value" in command and command["value"] is not None:
+        converted_commands[command["key"]] = command["value"]
+        converted_commands[command["key"]]["variables"] = self.load_variables(command["value"]["variables"])
+    return converted_commands
+  
+  def load_commands_and_variables(self):
+    self._active_profile_name = self._settings.get(["active_profile"])
+    
+    profiles = self._settings.get(["profiles"])
+    
+    # print(f"*************** PROFILES **************\n {profiles}\n\n\n")
+    
+    active_profile = {}
+    for profile in profiles:
+      if profile.get("key") == self._active_profile_name:
+        active_profile = profile.get("value")
+    
+    # print(f"Active Profile {active_profile}")
+    self._commands = self.load_commands(active_profile.get("commands", []))
+    # print(f"Loaded Commands {self._commands}")
+    
+    self._variables = self.load_variables(active_profile.get("variables", []))
+    # print(f"Loaded Variables {self._variables}")
+  
   def on_after_startup(self):
     self._logger.info("USB Keyboard loading")
     
-    self.key_status = dict()
+    self.load_commands_and_variables()
+    self.key_status = {}
     self.key_discovery = {}
     self.last_key_pressed = None
-    self.listening_variables = dict()
+    self.listening_variables = {}
     self._settings.set(["key_discovery"], {})
     self.should_stop_polling=False
     
@@ -283,77 +317,66 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     
 
   ##~~ SettingsPlugin mixin
+  
+  def on_settings_save(self, data):
+      octoprint.plugin.SettingsPlugin.on_settings_save(self, data)
+      
+      self.load_commands_and_variables()
 
   def get_settings_defaults(self):
     # put your plugin's default settings here
     return dict(
       active_profile="default",
       
-      profiles={
-        "test":{
-          "commands":{
-          },
+      profiles=[
+        {"key":"test","value":{
+          "commands":[],
           "keyboard":[
             {"keys":[None]}
           ],
-          "variables":{
-            
-          }
-        },
-        "default":{
-          "commands":{
+          "variables":[]
+        }},
+        {"key":"default", "value":{
+          "commands":[
             # **************************** Linux ******************************
-            
-            "KPDOT":     {"pressed": [{"type":"listen_vars", "variables":["distance", "hotend", "bed"]}], "released": [{"type":"save_vars", "variables":["distance", "hotend", "bed"]}]},  # making this my variable modifier
-            "KPENTER":   {"pressed": [{"type":"printer", "gcode":["G28 Z"]}]}, # homing z
-                         
-            "KP0":       {"pressed": [{"type":"printer", "gcode":["G28 X Y"]}],                           "variable_values": {"distance":0.1}   },  # homing x, y
-            "KP1":       {"pressed": [{"type":"printer", "gcode":["G0 X10 Y10 F6000"]}],                  "variable_values": {"distance":1}     },  # front left corner, 10x10 in
-            "KP2":       {"pressed": [{"type":"printer", "gcode":["G91","G0 Y-<distance> F6000","G90"]}], "variable_values": {"distance":10}    },  # move south
-            "KP3":       {"pressed": [{"type":"printer", "gcode":["G0 X290 Y10 F6000"]}],                 "variable_values": {"distance":100}   },  # front right corner, 10x10 in
-            "KP4":       {"pressed": [{"type":"printer", "gcode":["G91","G0 X-<distance> F6000","G90"]}], "variable_values": {"bed":0}          },  # move west
-            "KP5":       {"pressed": [{"type":"printer", "gcode":["G0 X150 Y150 F6000"]}],                "variable_values": {"bed":50}         },  # center
-            "KP6":       {"pressed": [{"type":"printer", "gcode":["G91","G0 X+<distance> F6000","G90"]}], "variable_values": {"bed":60}         },  # move east
-            "KP7":       {"pressed": [{"type":"printer", "gcode":["G0 X10 Y290 F6000"]}],                 "variable_values": {"hotend":0}       },  # rear left corner, 10x10 in
-            "KP8":       {"pressed": [{"type":"printer", "gcode":["G91","G0 Y+<distance> F6000","G90"]}], "variable_values": {"hotend":205}     },  # move north
-            "KP9":       {"pressed": [{"type":"printer", "gcode":["G0 X290 Y290 F6000"]}],                "variable_values": {"hotend":210}     },  # rear right corner, 10x10 in
-            "KPPLUS":    {"pressed": [{"type":"printer", "gcode":["G91","G0 Z-<distance> F300","G90"]}]                                         },  # move down
-            "KPMINUS":   {"pressed": [{"type":"printer", "gcode":["G91","G0 Z+<distance> F300","G90"]}]                                         },  # move up
-            "KPASTERISK":{"pressed": [{"type":"printer", "gcode":["G91","G1 E-<distance> F300","G90"]}]                                         },  # move up
-            "BACKSPACE": {"pressed": [{"type":"printer", "gcode":["G91","G1 E+<distance> F300","G90"]}]                                         },  # move up
-            
-            
-            # "EQUAL":  {"pressed": [{"type":"printer", "gcode":["M104 S<hotend>","M140 S<bed>"]}]                                             },  # set hotend and bed
-            
-            # "BACKSPACE":{"pressed":{"listen_vars":["bed","hotend"]}, "released":{"save_vars":["bed","hotend"]}},  # set temperatures for hotend and bed
-            "KPSLASH":   {"pressed": [{"type":"printer", "gcode":["M104 S<hotend>","M140 S<bed>"]}]                                             },  # set hotend and bed
-            "ESC":       {"pressed": [{"type":"psu", "command":"toggle", "can_trigger_while_hot":False, "hotend_max":50 }]                      },
+            {"key":"KPDOT", "value":     {"pressed": [{"type":"listen_vars", "variables":["distance", "hotend", "bed"]}],  "released": [{"type":"save_vars", "variables":["distance", "hotend", "bed"]}], "variables":[]}},  # making this my variable modifier
+            {"key":"KPENTER", "value":   {"pressed": [{"type":"printer", "gcode":["G28 Z"]}],                              "released": [], "variables":  []                                }},# homing z
+            {"key":"KP0", "value":       {"pressed": [{"type":"printer", "gcode":["G28 X Y"]}],                            "released": [], "variables":  [{"key":"distance", "value":0.1}] }},  # homing x, y
+            {"key":"KP1", "value":       {"pressed": [{"type":"printer", "gcode":["G0 X10 Y10 F6000"]}],                   "released": [], "variables":  [{"key":"distance", "value":1}  ] }},  # front left corner, 10x10 in
+            {"key":"KP2", "value":       {"pressed": [{"type":"printer", "gcode":["G91","G0 Y-<distance> F6000","G90"]}],  "released": [], "variables":  [{"key":"distance", "value":10} ] }},  # move south
+            {"key":"KP3", "value":       {"pressed": [{"type":"printer", "gcode":["G0 X290 Y10 F6000"]}],                  "released": [], "variables":  [{"key":"distance", "value":100}] }},  # front right corner, 10x10 in
+            {"key":"KP4", "value":       {"pressed": [{"type":"printer", "gcode":["G91","G0 X-<distance> F6000","G90"]}],  "released": [], "variables":  [{"key":"bed",      "value":0}  ] }},  # move west
+            {"key":"KP5", "value":       {"pressed": [{"type":"printer", "gcode":["G0 X150 Y150 F6000"]}],                 "released": [], "variables":  [{"key":"bed",      "value":50} ] }},  # center
+            {"key":"KP6", "value":       {"pressed": [{"type":"printer", "gcode":["G91","G0 X+<distance> F6000","G90"]}],  "released": [], "variables":  [{"key":"bed",      "value":60} ] }},  # move east
+            {"key":"KP7", "value":       {"pressed": [{"type":"printer", "gcode":["G0 X10 Y290 F6000"]}],                  "released": [], "variables":  [{"key":"hotend",   "value":0}  ] }},  # rear left corner, 10x10 in
+            {"key":"KP8", "value":       {"pressed": [{"type":"printer", "gcode":["G91","G0 Y+<distance> F6000","G90"]}],  "released": [], "variables":  [{"key":"hotend",   "value":205}] }},  # move north
+            {"key":"KP9", "value":       {"pressed": [{"type":"printer", "gcode":["G0 X290 Y290 F6000"]}],                 "released": [], "variables":  [{"key":"hotend",   "value":210}] }},  # rear right corner, 10x10 in
+            {"key":"KPPLUS", "value":    {"pressed": [{"type":"printer", "gcode":["G91","G0 Z-<distance> F300","G90"]}],   "released": [], "variables":  []                                }},  # move down
+            {"key":"KPMINUS", "value":   {"pressed": [{"type":"printer", "gcode":["G91","G0 Z+<distance> F300","G90"]}],   "released": [], "variables":  []                                }},  # move up
+            {"key":"KPASTERISK", "value":{"pressed": [{"type":"printer", "gcode":["G91","G1 E-<distance> F300","G90"]}],   "released": [], "variables":  []                                }},  # move up
+            {"key":"BACKSPACE", "value": {"pressed": [{"type":"printer", "gcode":["G91","G1 E+<distance> F300","G90"]}],   "released": [], "variables":  []                                }},  # move up
+            {"key":"KPSLASH", "value":   {"pressed": [{"type":"printer", "gcode":["M104 S<hotend>","M140 S<bed>"]}],       "released": [], "variables":  []                                }},  # set hotend and bed
+            {"key":"ESC", "value":       {"pressed": [{"type":"psu", "command":"toggle", "hotend_max":50 }],               "released": [], "variables":  []                                }},  # turn off PSU if hotends < 50c
             # **************************** Mac ******************************
-            ".":         {"pressed": [{"type":"listen_vars", "variables":["distance", "hotend", "bed"]}], "released": [{"type":"save_vars", "variables":["distance", "hotend", "bed"]}]},  # making this my variable modifier
-            "\\x03":     {"pressed": [{"type":"printer", "gcode":["G28 Z"]}]}, # homing z
-                         
-            "0":         {"pressed": [{"type":"printer", "gcode":["G28 X Y"]}],                           "variable_values": {"distance":0.1}   },  # homing x, y
-            "1":         {"pressed": [{"type":"printer", "gcode":["G0 X10 Y10 F6000"]}],                  "variable_values": {"distance":1}     },  # front left corner, 10x10 in
-            "2":         {"pressed": [{"type":"printer", "gcode":["G91","G0 Y-<distance> F6000","G90"]}], "variable_values": {"distance":10}    },  # move south
-            "3":         {"pressed": [{"type":"printer", "gcode":["G0 X290 Y10 F6000"]}],                 "variable_values": {"distance":100}   },  # front right corner, 10x10 in
-            "4":         {"pressed": [{"type":"printer", "gcode":["G91","G0 X-<distance> F6000","G90"]}], "variable_values": {"bed":0}          },  # move west
-            "5":         {"pressed": [{"type":"printer", "gcode":["G0 X150 Y150 F6000"]}],                "variable_values": {"bed":50}         },  # center
-            "6":         {"pressed": [{"type":"printer", "gcode":["G91","G0 X+<distance> F6000","G90"]}], "variable_values": {"bed":60}         },  # move east
-            "7":         {"pressed": [{"type":"printer", "gcode":["G0 X10 Y290 F6000"]}],                 "variable_values": {"hotend":0}       },  # rear left corner, 10x10 in
-            "8":         {"pressed": [{"type":"printer", "gcode":["G91","G0 Y+<distance> F6000","G90"]}], "variable_values": {"hotend":205}     },  # move north
-            "9":         {"pressed": [{"type":"printer", "gcode":["G0 X290 Y290 F6000"]}],                "variable_values": {"hotend":210}     },  # rear right corner, 10x10 in
-            "+":         {"pressed": [{"type":"printer", "gcode":["G91","G0 Z-<distance> F300","G90"]}]                                         },  # move down
-            "-":         {"pressed": [{"type":"printer", "gcode":["G91","G0 Z+<distance> F300","G90"]}]                                         },  # move up
-            "*":         {"pressed": [{"type":"printer", "gcode":["G91","G1 E-<distance> F300","G90"]}]                                         },  # move up
-            "backspace": {"pressed": [{"type":"printer", "gcode":["G91","G1 E+<distance> F300","G90"]}]                                         },  # move up
-            
-            
-            # "EQUAL":  {"pressed": [{"type":"printer", "gcode":["M104 S<hotend>","M140 S<bed>"]}]                                             },  # set hotend and bed
-            
-            # "BACKSPACE":{"pressed":{"listen_vars":["bed","hotend"]}, "released":{"save_vars":["bed","hotend"]}},  # set temperatures for hotend and bed
-            "/":         {"pressed": [{"type":"printer", "gcode":["M104 S<hotend>","M140 S<bed>"]}]                                             },  # set hotend and bed
-            "esc":       {"pressed": [{"type":"psu", "command":"toggle", "can_trigger_while_hot":False, "hotend_max":50 }]                      }
-          },
+            {"key":".", "value":         {"pressed": [{"type":"listen_vars", "variables":["distance", "hotend", "bed"]}],  "released": [{"type":"save_vars", "variables":["distance", "hotend", "bed"]}], "variables":[]}},  # making this my variable modifier
+            {"key":"\\x03", "value":     {"pressed": [{"type":"printer", "gcode":["G28 Z"]}],                              "released": [], "variables":  []                                }},# homing z
+            {"key":"0", "value":         {"pressed": [{"type":"printer", "gcode":["G28 X Y"]}],                            "released": [], "variables":  [{"key":"distance", "value":0.1}] }},  # homing x, y
+            {"key":"1", "value":         {"pressed": [{"type":"printer", "gcode":["G0 X10 Y10 F6000"]}],                   "released": [], "variables":  [{"key":"distance", "value":1}  ] }},  # front left corner, 10x10 in
+            {"key":"2", "value":         {"pressed": [{"type":"printer", "gcode":["G91","G0 Y-<distance> F6000","G90"]}],  "released": [], "variables":  [{"key":"distance", "value":10} ] }},  # move south
+            {"key":"3", "value":         {"pressed": [{"type":"printer", "gcode":["G0 X290 Y10 F6000"]}],                  "released": [], "variables":  [{"key":"distance", "value":100}] }},  # front right corner, 10x10 in
+            {"key":"4", "value":         {"pressed": [{"type":"printer", "gcode":["G91","G0 X-<distance> F6000","G90"]}],  "released": [], "variables":  [{"key":"bed",      "value":0}  ] }},  # move west
+            {"key":"5", "value":         {"pressed": [{"type":"printer", "gcode":["G0 X150 Y150 F6000"]}],                 "released": [], "variables":  [{"key":"bed",      "value":50} ] }},  # center
+            {"key":"6", "value":         {"pressed": [{"type":"printer", "gcode":["G91","G0 X+<distance> F6000","G90"]}],  "released": [], "variables":  [{"key":"bed",      "value":60} ] }},  # move east
+            {"key":"7", "value":         {"pressed": [{"type":"printer", "gcode":["G0 X10 Y290 F6000"]}],                  "released": [], "variables":  [{"key":"hotend",   "value":0}  ] }},  # rear left corner, 10x10 in
+            {"key":"8", "value":         {"pressed": [{"type":"printer", "gcode":["G91","G0 Y+<distance> F6000","G90"]}],  "released": [], "variables":  [{"key":"hotend",   "value":205}] }},  # move north
+            {"key":"9", "value":         {"pressed": [{"type":"printer", "gcode":["G0 X290 Y290 F6000"]}],                 "released": [], "variables":  [{"key":"hotend",   "value":210}] }},  # rear right corner, 10x10 in
+            {"key":"+", "value":         {"pressed": [{"type":"printer", "gcode":["G91","G0 Z-<distance> F300","G90"]}],   "released": [], "variables":  []                                }},  # move down
+            {"key":"-", "value":         {"pressed": [{"type":"printer", "gcode":["G91","G0 Z+<distance> F300","G90"]}],   "released": [], "variables":  []                                }},  # move up
+            {"key":"*", "value":         {"pressed": [{"type":"printer", "gcode":["G91","G1 E-<distance> F300","G90"]}],   "released": [], "variables":  []                                }},  # move up
+            {"key":"backspace", "value": {"pressed": [{"type":"printer", "gcode":["G91","G1 E+<distance> F300","G90"]}],   "released": [], "variables":  []                                }},  # move up
+            {"key":"/", "value":         {"pressed": [{"type":"printer", "gcode":["M104 S<hotend>","M140 S<bed>"]}],       "released": [], "variables":  []                                }},  # set hotend and bed
+            {"key":"esc", "value":       {"pressed": [{"type":"psu", "command":"toggle", "hotend_max":50 }],               "released": [], "variables":  []                                }}   # turn off PSU if hotends < 50c
+          ],
           "keyboard": [
               {"keys":["esc", None, "tab", "="]},
               {"keys":[None, "/", "*", "backspace"]},
@@ -362,15 +385,15 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
               {"keys":["1", "2", "3", None]},
               {"keys":[None, "0", ".", "\\x03"]}
           ],
-          "variables":{
-            "distance":"1",
-            "bed":"60",
-            "hotend":"210"
-          }
-        }
-      }
+          "variables":[
+            {"key":"distance", "value":   1 },
+            {"key":"bed",      "value":  60 },
+            {"key":"hotend",   "value": 210 }
+          ]
+        }}
+      ]
     )
-    
+
     
   ##~~ SimpleApi mixin
   
