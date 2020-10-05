@@ -1,0 +1,105 @@
+<template id='template-sfr-commands'>
+  <span><strong>Commands</strong></span><!-- <button data-bind="css: lockedClass, click: toggleLock"></button> -->
+
+  <table>
+    <tbody>
+      <!-- ko foreach: commands -->
+      <tr>
+        <td>
+          <sfr-commands-command params='commandObject: $data, profile: $parent.profile, locked: $parent.locked'></sfr-commands-command>
+        </td>
+      </tr>
+      <!-- /ko -->
+      <!-- <tr>
+        <td>
+          <button class="btn btn-primary" data-bind="click: addRow, attr: {disabled: locked}">{{ _('+') }}</button>
+          <button class="btn btn-danger" data-bind="click: deleteRow, attr: {disabled: locked}">{{ _('-') }}</button>
+        </td>
+      </tr> -->
+    </tbody>
+  </table>
+</template>
+
+<template id='template-sfr-commands-command'>
+  <span><strong data-bind="text: command"></strong></span><button data-bind="css: expandedClass, click: toggleExpanded"></button><button data-bind="css: lockedClass, click: toggleLock, visible: expanded"></button>
+
+  <table data-bind="visible: expanded">
+    <tbody>
+      <tr>
+        <td><strong>Pressed</strong></td>
+      </tr>
+      <!-- ko foreach: pressed -->
+      <tr>
+        <!-- ko if: $data.type() == "printer" -->
+        <td><sfr-commands-command-printer params='commandActionObject: $data, profile: $parent.profile, locked: $parent.locked'></sfr-commands-command-printer></td>
+        <!-- /ko -->
+        <td></td>
+      </tr>
+      <!-- /ko -->
+      <tr>
+        <td><strong>Released</strong></td>
+      </tr>
+      <!-- ko foreach: released -->
+      <tr>
+        <!-- ko if: $data.type() == "printer" -->
+        <td><sfr-commands-command-printer params='commandActionObject: $data, profile: $parent.profile, locked: $parent.locked'></sfr-commands-command-printer></td>
+        <!-- /ko -->
+        <!-- <td data-bind="text: $data.type">
+        </td>
+        <td data-bind="text: $data.value">
+        </td> -->
+        <td></td>
+          
+      </tr>
+      <!-- /ko -->
+      <tr>
+        <td><sfr-variables params='variables: variables, profile: profile, locked: locked'></sfr-variables></td>
+      </tr>
+      <!-- <dl>
+        <dd></dd>
+      </dl> -->
+      
+      <!-- <tr>
+        <td>
+          <button class="btn btn-primary" data-bind="click: addRow, attr: {disabled: locked}">{{ _('+') }}</button>
+          <button class="btn btn-danger" data-bind="click: deleteRow, attr: {disabled: locked}">{{ _('-') }}</button>
+        </td>
+      </tr> -->
+    </tbody>
+  </table>
+</template>
+
+<template id='template-sfr-commands-command-printer'>
+
+  <table>
+    <tbody>
+      <tr>
+        <td><strong>Command Type:</strong></td>
+        <td data-bind="text: type"></td>
+      </tr>
+      <tr>
+        <td>
+          Send while printing:
+        </td>
+        <td>
+          <input type="checkbox" data-bind="checked: sendWhilePrinting, attr: {disabled: locked}"/>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          Gcode to run:
+        </td>
+      </tr>
+    <!-- ko foreach: gcode -->
+      <tr>
+        <td><input data-bind="textInput: $data, attr: {disabled: $parent.locked}"/></td>
+        <td><button class="btn btn-danger" data-bind="click: $parent.deleteLine, attr: {disabled: $parent.locked}">{{ _('-') }}</button></td>
+      </tr>
+      <!-- /ko -->
+      <tr>
+        <td><button class="btn btn-primary" data-bind="click: addLine, attr: {disabled: locked}">{{ _('+') }}</button></td>
+      </tr>
+    </tbody>
+  </table>
+
+</template>

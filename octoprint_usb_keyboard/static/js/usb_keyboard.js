@@ -8,7 +8,8 @@
 
 $(function() {
   function Usb_keyboardViewModel(parameters) {
-    var self = this;    
+    var self = this;
+    Expandable.call(self, "settings")
 
     // assign the injected parameters, e.g.:
     // self.loginStateViewModel = parameters[0];
@@ -16,21 +17,60 @@ $(function() {
     
     self.settingsViewModel = parameters[0];
     self.activeProfileName = ko.observable();
+    self.deviceQueryMessage = ko.observable();
+    self.activeListeningText = ko.observableArray();
+    self.devicePath = ko.observable();
+    self.trialDevicePath = ko.observable();
     
-    function Lockable(description) {
+    
+    function Lockable(description, locked) {
       var self = this
+            
+      self.lockProvided = ko.observable()
+      if (locked != undefined) {
+        self.lockProvided(true)
+        self.locked = locked
+      }
+      else {
+        self.locked = ko.observable(true);
+        self.lockProvided(false)
+      }
       
-      self.locked = ko.observable(true);
       self.description = description
       
       self.toggleLock = function() {
         self.locked(!self.locked());
-        console.log("Toggling " + description + " lock to " + (self.locked() ? 'locked' : 'unlocked'))
+        // console.log("Toggling " + description + " lock to " + (self.locked() ? 'locked' : 'unlocked'))
       }
       
       self.lockedClass = ko.pureComputed(function() {
         return self.locked() ? 'fa fa-lock' : 'fa fa-unlock';
-      });// .extend({ notify: 'always' });
+      });
+    }
+    
+    function Expandable(description, expanded) {
+      var self = this
+
+      self.expansionProvided = ko.observable()
+      if (expanded != undefined) {
+        self.expansionProvided(true)
+        self.expanded = expanded
+      }
+      else {
+        self.expanded = ko.observable(false);
+        self.expansionProvided(false)
+      }
+
+      self.description = description
+
+      self.toggleExpanded = function() {
+        self.expanded(!self.expanded());
+        // console.log("Toggling " + description + " expansion to " + (self.expanded() ? 'visible' : 'hidden'))
+      }
+
+      self.expandedClass = ko.pureComputed(function() {
+        return self.expanded() ? 'fa fa-caret-down' : 'fa fa-caret-left';
+      });
     }
     
     function KeyboardViewModel(params) {
@@ -57,14 +97,12 @@ $(function() {
         // TODO:  Put an "Are you sure?" dialog if the cell has config
         self.keyboard.pop()
       };
-      
-      
     }
-    
     ko.components.register('sfr-keyboard', {
       viewModel: KeyboardViewModel,
       template: { element: 'template-sfr-keyboard' }
     });
+
 
     function KeyboardRowViewModel(params) {
       var self = this
@@ -88,11 +126,11 @@ $(function() {
         self.keys.pop()
       };
     }
-    
     ko.components.register('sfr-keyboard-row', {
       viewModel: KeyboardRowViewModel,
       template: { element: 'template-sfr-keyboard-row' }
     });
+    
     
     function KeyboardRowKeyViewModel(params) {
       var self = this
@@ -120,7 +158,6 @@ $(function() {
         // console.log("self.settings() ", self.settingsViewModel.settings.plugins.usb_keyboard.key_discovery)
       };
     }
-    
     ko.components.register('sfr-keyboard-row-key', {
       viewModel: KeyboardRowKeyViewModel,
       template: { element: 'template-sfr-keyboard-row-key' }
@@ -129,7 +166,7 @@ $(function() {
     
     function VariablesViewModel(params) {
       var self = this
-      Lockable.call(self, "variables")
+      Lockable.call(self, "variables", params.locked)
 
       // console.log("VariablesViewModel raw", params)
       // console.log("VariablesViewModel self", self)
@@ -138,6 +175,7 @@ $(function() {
       self.newVariableValue = ko.observable(null)
       self.dupeDetected = ko.observable(false)
       self.variables = params.variables
+      
       
       this.deleteVariable = function(variable, index) {
         console.log("before deleting variables", self.variables())
@@ -162,10 +200,77 @@ $(function() {
         }
       }
     }
-    
     ko.components.register('sfr-variables', {
       viewModel: VariablesViewModel,
       template: { element: 'template-sfr-variables' }
+    });
+    
+    
+    function CommandsViewModel(params) {
+      var self = this
+      // Lockable.call(self, "commands")
+      //
+      // console.log("CommandsViewModel raw", params)
+      // console.log("CommandsViewModel self", self)
+      //
+      self.commands = params.commands
+      self.profile = params.profile
+    }
+    ko.components.register('sfr-commands', {
+      viewModel: CommandsViewModel,
+      template: { element: 'template-sfr-commands' }
+    });
+    
+    
+    function CommandsCommandViewModel(params) {
+      var self = this
+      Lockable.call(self, "commands")
+      Expandable.call(self, "commands")
+
+      // console.log("CommandsCommandViewModel raw", params)
+      // console.log("CommandsCommandViewModel self", self)
+      
+      self.profile = params.profile
+      self.command = params.commandObject.key
+      self.pressed = params.commandObject.value.pressed
+      self.released = params.commandObject.value.released
+      self.variables = params.commandObject.value.variables
+    }
+    ko.components.register('sfr-commands-command', {
+      viewModel: CommandsCommandViewModel,
+      template: { element: 'template-sfr-commands-command' }
+    });
+    
+    
+    function CommandsCommandPrinterViewModel(params) {
+      var self = this
+      Lockable.call(self, "action", params.locked)
+
+      // console.log("CommandsCommandPrinterViewModel raw", params)
+      // console.log("CommandsCommandPrinterViewModel self", self)
+      
+      self.profile = params.profile;
+      self.type = params.commandActionObject.type;
+      self.gcode = params.commandActionObject.gcode;
+      self.sendWhilePrinting = params.commandActionObject.send_while_printing;
+      
+      // this will be called when the user clicks the "+ Row" button and add a new row of data
+      self.addLine = function() {
+        console.log("Clicked + gcode line");
+        self.gcode.push(ko.observableArray(""))
+      };
+
+      // this will be called when the user clicks the "+ Row" button and add a new row of data
+      self.deleteLine = function() {
+        console.log("Clicked - gcode line");
+        // TODO:  Put an "Are you sure?" dialog if the cell has config
+        self.gcode.pop()
+      };
+      
+    }
+    ko.components.register('sfr-commands-command-printer', {
+      viewModel: CommandsCommandPrinterViewModel,
+      template: { element: 'template-sfr-commands-command-printer' }
     });
     
     
@@ -253,7 +358,6 @@ $(function() {
       }
     };
     
-    
     self.profileNames = ko.pureComputed(function() {
       var profileNames = []
       
@@ -265,19 +369,66 @@ $(function() {
 
       return profileNames
     });//.extend({ notify: 'always' });
+    self.configuringDevice = ko.observable(false)
     
+    self.configureDevice = function() {
+      self.configuringDevice(!self.configuringDevice())
+      
+      if (self.configuringDevice()) {
+        console.log("Turning on listening...")
+        OctoPrint.simpleApiCommand('usb_keyboard', 'query_devices', {});
+        OctoPrint.simpleApiCommand('usb_keyboard', 'active_listening', {"action":"start"});
+        $('#UsbDeviceConfigModal').modal('show');
+      }
+      else {
+        console.log("Turning off listening...")
+        OctoPrint.simpleApiCommand('usb_keyboard', 'active_listening', {"action":"stop"});
+        $('#UsbDeviceConfigModal').modal('hide');
+      }
+    }
+    
+    self.changeDevicePath = function() {
+      if (self.devicePath() != self.trialDevicePath()) {
+        self.devicePath(self.trialDevicePath())
+        OctoPrint.simpleApiCommand('usb_keyboard', 'change_device_path', {"device_path":self.devicePath()});
+      }
+      
+    }
+
+    self.devicePathOptions = ko.observableArray()
 
     self.onBeforeBinding = function() {
       console.log("Settings", self.settingsViewModel.settings.plugins.usb_keyboard)
       
       self.activeProfileName = self.settingsViewModel.settings.plugins.usb_keyboard.active_profile;
       self.profiles = self.settingsViewModel.settings.plugins.usb_keyboard.profiles
+      self.devicePath = self.settingsViewModel.settings.plugins.usb_keyboard.device_path
+      
+      $( "#UsbDeviceConfigModal" ).on('hidden', self.configureDevice);
+      // $( "#UsbDeviceConfigModal" ).on('shown', function(){
+      //     alert("I want this to appear after the modal has opened!");
+      // });
       
       // self.profiles(self.settingsViewModel.settings.plugins.usb_keyboard.profiles)
+      
+      // self.deviceConfiguration = ko.computed(function() {
+      //   if (self.expanded() == true) {
+      //     console.log("Turning on listening...")
+      //     OctoPrint.simpleApiCommand('usb_keyboard', 'query_devices', {});
+      //     OctoPrint.simpleApiCommand('usb_keyboard', 'active_listening', {"action":"start"});
+      //   }
+      //   else {
+      //     console.log("Turning off listening...")
+      //     OctoPrint.simpleApiCommand('usb_keyboard', 'active_listening', {"action":"stop"});
+      //   }
+      //   return self.deviceQueryMessage()
+      // });
     }
     
     self.onSettingsBeforeSave = function() {
       console.log("Settings saving", self.settingsViewModel.settings.plugins.usb_keyboard)
+      
+      
       
       
       // TODO: remove duplicate profile names
@@ -287,7 +438,8 @@ $(function() {
     self.onSettingsHidden = function() {
       console.log("Settings closed", self.settingsViewModel.settings.plugins.usb_keyboard)
       
-      $('#settings_plugin_usb_keyboard button.fa-unlock').trigger('click');
+      $('#settings_plugin_usb_keyboard button.fa-unlock').trigger('click');     // Lock all locks
+      $('#settings_plugin_usb_keyboard button.fa-caret-down').trigger('click'); // Contract all expansions
     }
     
     // Key Discovery coming back
@@ -295,30 +447,68 @@ $(function() {
       if (plugin !== "usb_keyboard") {
         return;
       }
+      
+      switch(data["reply"]) {
+        case "key_discovery":
+          var row = data["row"]
+          var column = data["column"]
+          var keyName = data["name"]
+          var profile = data["profile"]
+          
+          var targetedProfileIndex = 0
+            
+          // function findTargetedProfile(value, index, array) {
+//             if (value.key() == profile) {
+//               targetedProfileIndex = index;
+//             }
+//           }
+//           self.profiles().forEach(findTargetedProfile);
+          
+          self.profiles().some(function(value) {
+            if (value.key() == profile) {
+              console.log("Key targeted ", self.profiles()[targetedProfileIndex].value.keyboard()[row].keys()[column]);
+              value.value.keyboard()[row].keys.splice(column, 1, keyName)
+              return true
+            }
+          })
+      
+          // console.log("Key targeted ", self.profiles()[targetedProfileIndex].value.keyboard()[row].keys()[column]);
+//
+//           self.profiles()[targetedProfileIndex].value.keyboard()[row].keys.splice(column, 1, keyName)
+          break;
+        case "query_devices":
+          // console.log("Getting info about attached USB devices", data)
+          
+          self.deviceQueryMessage(data["message"])
+          self.devicePathOptions(data["options"])
+          break;
+        case "active_listening":
+          // console.log("Getting key event", data)
+          key = data["key"]
+          keyState = data["key_state"]
+          self.activeListeningText.push("Key '" + key + "' " + keyState)
+          if (self.activeListeningText().length > 10) {
+            self.activeListeningText.shift()
+          }
+          break;
+        default:
+          console.log("Unknown reply from backend...")
+      } 
+      
+
+      
+      
+      
       // console.log("Data", plugin, data);
       // TODO:  Fix this!
       
-      var row = data["row"]
-      var column = data["column"]
-      var keyName = data["name"]
-      var profile = data["profile"]
+      
       
       // console.log("self.profiles()", self.profiles());
       // console.log("self.profiles()", self.profiles());
       // console.log("self.profiles()", self.profiles()[data["profile"]].value.keyboard()[data["row"]].keys()[data["column"]] );
       
-      var targetedProfileIndex = 0
-            
-      function findTargetedProfile(value, index, array) {
-        if (value.key() == profile) {
-          targetedProfileIndex = index;
-        }
-      }
-      self.profiles().forEach(findTargetedProfile);
       
-      console.log("Key targeted ", self.profiles()[targetedProfileIndex].value.keyboard()[row].keys()[column]);
-      
-      self.profiles()[targetedProfileIndex].value.keyboard()[row].keys.splice(column, 1, keyName)
       // self.profiles()[data["profile"]].value.keyboard()[data["row"]].keys.splice(data["column"], 1, data["name"]);
       
       // self.profiles[data["profile"]].keyboard()[data["row"]].keys.splice(data["column"], 1, data["name"]);

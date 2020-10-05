@@ -10,6 +10,8 @@
       <td><strong>Active Profile:</strong></td>
       <td><select data-bind="options: profileNames, value: activeProfileName"></select></td>
       <td><button class="btn btn-primary" data-bind="click: createProfile">{{ _('+') }}</button></td>
+      <td><button class="btn btn-default" data-bind="click: configureDevice">{{ _('Device listener configuration') }}</button></td>
+      
     </tr>
     <tr>
       <td data-bind="visible: dupeDetected"><span><strong>*** Duplicate profile name detected! ***</strong></span></td>
@@ -17,6 +19,40 @@
   </thead>
 </table>
 <hr>
+
 <div data-bind="foreach: profiles">
   <sfr-profile params='profileObject: $data, profileArray: $parent.profiles, profileNames: $parent.profileNames, activeProfileName: $parent.activeProfileName' data-bind="visible: $data.key() == $parent.activeProfileName()"></sfr-profile>
+</div>
+
+<div id="UsbDeviceConfigModal" class="modal hide fade"><!-- data-bind="visible: configuringDevice"  -->
+  <div class="modal-header">
+    <a href="#" class="close" data-dismiss="modal" aria-hidden="true">&times;</a>
+    <h3>{{ _('Device Configuration') }}</h3>
+  </div>
+  <div class="modal-body">
+    <span><strong>Device data from backend:</strong></span>
+    <pre data-bind="text: deviceQueryMessage"></pre>
+    <table>
+      <tr data-bind="visible: devicePathOptions().length > -0">
+        <td><select data-bind="options: devicePathOptions, value: trialDevicePath"></select></td>
+        <td><button class="btn btn-default" data-bind="click: changeDevicePath">{{ _('Try Device') }}</button></td>
+      </tr>
+      <tr data-bind="visible: devicePathOptions().length > -0">
+        <td>Current device path:</td>
+        <td data-bind="text: devicePath"></td>
+      </tr>
+      <tr>
+        <td>Data coming from the listener:</td>
+      </tr>
+      <!-- ko foreach: activeListeningText -->
+      <tr>
+        <td></td>
+        <td data-bind="text: $data"></td>
+      </tr>
+      <!-- /ko -->
+    </table>
+  </div>
+  <div class="modal-footer">
+    <small>Make sure to click save in the main settings after making changes here.</small> <a href="#" class="btn" data-dismiss="modal" aria-hidden="true">{{ _('Close') }}</a>
+  </div>
 </div>

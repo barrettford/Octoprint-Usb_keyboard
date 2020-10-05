@@ -1,5 +1,7 @@
 {% include 'template_sfr_keyboard.jinja2' %}
+{% include 'template_sfr_commands.jinja2' %}
 {% include 'template_sfr_variables.jinja2' %}
+
 
 <template id='template-sfr-profile'>
   <span><strong>Profile</strong></span><button data-bind="css: lockedClass, click: toggleLock"></button>
@@ -16,5 +18,7 @@
   </table>
 
   <sfr-keyboard params='keyboard: keyboard, profile: profile'></sfr-keyboard>
+  <sfr-commands params='commands: commands, profile: profile'></sfr-commands>
   <sfr-variables params='variables: variables, profile: profile'></sfr-variables>
+  
 </template>

@@ -5,9 +5,10 @@ from octoprint.events import eventManager
 
 
 class KeyboardListenerThread(keyboard.Listener): 
-  def __init__(self, name): 
+  def __init__(self, name, device_path): 
       keyboard.Listener.__init__(self, on_press=self.on_press, on_release=self.on_release, suppress=False)
       self.name = name
+      self.device_path = device_path
       self.key_dict = {}
       
   # If trying to use pynput
@@ -53,4 +54,5 @@ class KeyboardListenerThread(keyboard.Listener):
       ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0) 
       print('Exception raise failure') 
 
-
+  def get_device_info(self):
+    return "Using pynput, no listener configuration needed.", []

@@ -5,16 +5,17 @@
 import threading
 import ctypes
 import time
-from evdev import InputDevice, categorize, ecodes
+from evdev import InputDevice, categorize, ecodes, list_devices
 from octoprint.events import eventManager
    
 class KeyboardListenerThread(threading.Thread): 
-  def __init__(self, name): 
+  def __init__(self, name, device_path): 
       threading.Thread.__init__(self, daemon=True)
       self.name = name 
+      self.device_path = device_path
             
   def run(self): 
-    device = InputDevice('/dev/input/event1')
+    device = InputDevice(self.device_path)
     
     key_dict = {}
     KEY_STATE = ["released", "pressed", "pressed"]
@@ -54,6 +55,18 @@ class KeyboardListenerThread(threading.Thread):
     self.listener = KeyboardListenerThread('USB Keyboard Listener Thread')
     self.listener.start()
 
-  def kill_keyboard_listener():
+  def kill_keyboard_listener(self):
     self.listener.stop()
     # self.listener.join(0.1)
+    
+  def get_device_info(self):
+    message = "Using evdev, additional listener configuration may be needed.\n"
+    message += "Currently connected devices:\n"
+    options = []
+    devices = [InputDevice(device) for device in list_devices()]
+    for device in devices:
+      message += f"  Device {device}\n"
+      options.append(str(device)[7:24].replace(",", ""))
+      message += f"    Info {device.info}\n"
+      message += f"    Physical {device.phys}\n"
+    return message, options
