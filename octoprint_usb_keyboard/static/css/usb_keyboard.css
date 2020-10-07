@@ -21,15 +21,3 @@ table#profileTable {
 select#profileSelect {
   font-size: large;
 }
-#settings_plugin_usb_keyboard
-
-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-#settings_plugin_usb_keyboard
-
-button:hover#keyboardKey {
-/*  background-color: #4CAF50; /* Green */
-  color: red;
-}

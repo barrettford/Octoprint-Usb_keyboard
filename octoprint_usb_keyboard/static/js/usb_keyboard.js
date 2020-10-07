@@ -47,7 +47,6 @@ $(function() {
         return self.locked() ? 'fa fa-lock' : 'fa fa-unlock';
       });
     }
-    
     function Expandable(description, expanded) {
       var self = this
 
@@ -162,7 +161,7 @@ $(function() {
       viewModel: KeyboardRowKeyViewModel,
       template: { element: 'template-sfr-keyboard-row-key' }
     });
-        
+    
     
     function VariablesViewModel(params) {
       var self = this
@@ -177,11 +176,9 @@ $(function() {
       self.variables = params.variables
       
       
-      this.deleteVariable = function(variable, index) {
-        console.log("before deleting variables", self.variables())
-        self.variables.splice(index, 1)
-
-        console.log("after deleting variables", self.variables())
+      this.deleteVariable = function(data, event) {
+        console.log("data", data)
+        self.variables.remove(data)
       }
 
       this.addVariable = function() {
@@ -215,6 +212,7 @@ $(function() {
       //
       self.commands = params.commands
       self.profile = params.profile
+      self.allowedVariables = params.allowedVariables
     }
     ko.components.register('sfr-commands', {
       viewModel: CommandsViewModel,
@@ -235,6 +233,7 @@ $(function() {
       self.pressed = params.commandObject.value.pressed
       self.released = params.commandObject.value.released
       self.variables = params.commandObject.value.variables
+      self.allowedVariables = params.allowedVariables
     }
     ko.components.register('sfr-commands-command', {
       viewModel: CommandsCommandViewModel,
@@ -256,13 +255,13 @@ $(function() {
       
       // this will be called when the user clicks the "+ Row" button and add a new row of data
       self.addLine = function() {
-        console.log("Clicked + gcode line");
+        // console.log("Clicked + gcode line");
         self.gcode.push(ko.observableArray(""))
       };
 
       // this will be called when the user clicks the "+ Row" button and add a new row of data
       self.deleteLine = function() {
-        console.log("Clicked - gcode line");
+        // console.log("Clicked - gcode line");
         // TODO:  Put an "Are you sure?" dialog if the cell has config
         self.gcode.pop()
       };
@@ -271,6 +270,69 @@ $(function() {
     ko.components.register('sfr-commands-command-printer', {
       viewModel: CommandsCommandPrinterViewModel,
       template: { element: 'template-sfr-commands-command-printer' }
+    });
+    
+    
+    function CommandsCommandListenSaveVarsViewModel(params) {
+      var self = this
+      Lockable.call(self, "action", params.locked)
+      //
+      // console.log("CommandsCommandListenSaveVarsViewModel raw", params)
+      // console.log("CommandsCommandListenSaveVarsViewModel self", self)
+      
+      self.profile = params.profile;
+      self.allowedVariables = params.allowedVariables;
+      self.type = params.commandActionObject.type;
+      self.variables = params.commandActionObject.variables;
+    }
+    ko.components.register('sfr-commands-command-listen-save-vars', {
+      viewModel: CommandsCommandListenSaveVarsViewModel,
+      template: { element: 'template-sfr-commands-command-listen-save-vars' }
+    });
+    
+    
+    function CommandsCommandVariablesViewModel(params) {
+      var self = this
+      Lockable.call(self, "action", params.locked)
+      //
+      // console.log("CommandsCommandVariablesViewModel raw", params)
+      // console.log("CommandsCommandVariablesViewModel self", self)
+      
+      self.profile = params.profile;
+      self.variables = params.variables;
+      self.allowedVariables = params.allowedVariables
+      self.newVariableKey = ko.observable(null)
+      self.newVariableValue = ko.observable(null)
+      
+      // This will be used by every variable-selecting command
+      self.localAllowedVariables = ko.pureComputed(function() {
+        var variableNames = []
+        self.variables().some(function(value) {
+          variableNames.push(value.key)
+        });
+        
+        variableNames = ko.toJS(variableNames)
+        return ko.toJS(self.allowedVariables()).filter(function(value, index, arr) {
+          return variableNames.indexOf(value) == -1
+        });
+      });
+      
+      this.deleteVariable = function(variable, index) {
+        self.variables.splice(index, 1)
+      }
+
+      this.addVariable = function() {
+        if (self.newVariableKey() == null || self.newVariableValue() == null) {
+          return
+        }
+        self.variables.push({"key":ko.observable(self.newVariableKey()), "value":ko.observable(self.newVariableValue())})
+        self.newVariableKey(null)
+        self.newVariableValue(null)
+      }
+    }
+    ko.components.register('sfr-commands-command-variables', {
+      viewModel: CommandsCommandVariablesViewModel,
+      template: { element: 'template-sfr-commands-command-variables' }
     });
     
     
@@ -293,6 +355,16 @@ $(function() {
       self.dupeDetected = ko.observable(false)
       
       self.newProfileName = ko.observable(self.profile())
+      
+      // This will be used by every variable-selecting command
+      self.allowedVariables = ko.pureComputed(function() {
+        var allowedVariables = []        
+        self.variables().some(function(value) {
+          allowedVariables.push(value.key)
+        })
+        
+        return allowedVariables
+      });
       
       self.duplicateProfile = function() {
         var copyName = self.profile() + " copy"
@@ -329,7 +401,6 @@ $(function() {
       }
       
     }
-    
     ko.components.register('sfr-profile', {
       viewModel: ProfileViewModel,
       template: { element: 'template-sfr-profile' }

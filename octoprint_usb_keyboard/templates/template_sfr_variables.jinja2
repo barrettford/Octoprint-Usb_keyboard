@@ -20,7 +20,7 @@
             <td data-bind="text: $data.key"></td>
             <td><input data-bind="textInput: value, attr: {disabled: $parent.locked}" /></td>
             <td>
-              <button class="btn btn-danger" data-bind="click: $parent.deleteVariable.bind(key, $index), attr: {disabled: $parent.locked}">{{ _('-') }}</button>
+              <button class="btn btn-danger" data-bind="click: $parent.deleteVariable, attr: {disabled: $parent.locked}">{{ _('-') }}</button>
             </td>
           </tr>
         </tbody>

@@ -158,8 +158,8 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         
         
       # ------------------ PSU Control -------------------
-      # {"type":"psu", "command":"toggle"}
-      if current_action_type == "psu":
+      # {"type":"plugin_psucontrol", "command":"toggle", "hotend_max": 50}
+      if current_action_type == "plugin_psucontrol":
         # "command":"toggle, "can_trigger_while_hot":False, "hotend_max":        
         PSU_STATES = {"on":1, "off":-1, "toggle":0}
         psu_command = current_action.get("command")
@@ -378,7 +378,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
             {"key":"*", "value":         {"pressed": [{"type":"printer", "gcode":["G91","G1 E-<distance> F300","G90"], "send_while_printing": False}],   "released": [], "variables":  []                                }},  # move up
             {"key":"backspace", "value": {"pressed": [{"type":"printer", "gcode":["G91","G1 E+<distance> F300","G90"], "send_while_printing": False}],   "released": [], "variables":  []                                }},  # move up
             {"key":"/", "value":         {"pressed": [{"type":"printer", "gcode":["M104 S<hotend>","M140 S<bed>"], "send_while_printing": False}],       "released": [], "variables":  []                                }},  # set hotend and bed
-            {"key":"esc", "value":       {"pressed": [{"type":"psu", "command":"toggle", "hotend_max":50 }],               "released": [], "variables":  []                                }}   # turn off PSU if hotends < 50c
+            {"key":"esc", "value":       {"pressed": [{"type":"plugin_psucontrol", "command":"toggle", "hotend_max":50 }],               "released": [], "variables":  []                                }}   # turn off PSU if hotends < 50c
           ],
           "keyboard": [
               {"keys":["esc", None, "tab", "="]},

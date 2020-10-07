@@ -6,7 +6,7 @@
       <!-- ko foreach: commands -->
       <tr>
         <td>
-          <sfr-commands-command params='commandObject: $data, profile: $parent.profile, locked: $parent.locked'></sfr-commands-command>
+          <sfr-commands-command params='commandObject: $data, allowedVariables: $parent.allowedVariables, profile: $parent.profile, locked: $parent.locked'></sfr-commands-command>
         </td>
       </tr>
       <!-- /ko -->
@@ -33,6 +33,9 @@
         <!-- ko if: $data.type() == "printer" -->
         <td><sfr-commands-command-printer params='commandActionObject: $data, profile: $parent.profile, locked: $parent.locked'></sfr-commands-command-printer></td>
         <!-- /ko -->
+        <!-- ko if: $data.type().indexOf("_vars") != -1 -->
+        <td><sfr-commands-command-listen-save-vars params='commandActionObject: $data, allowedVariables: $parent.allowedVariables, profile: $parent.profile, locked: $parent.locked'></sfr-commands-command-listen-save-vars></td>
+        <!-- /ko -->
         <td></td>
       </tr>
       <!-- /ko -->
@@ -44,33 +47,51 @@
         <!-- ko if: $data.type() == "printer" -->
         <td><sfr-commands-command-printer params='commandActionObject: $data, profile: $parent.profile, locked: $parent.locked'></sfr-commands-command-printer></td>
         <!-- /ko -->
-        <!-- <td data-bind="text: $data.type">
-        </td>
-        <td data-bind="text: $data.value">
-        </td> -->
+        <!-- ko if: $data.type().indexOf("_vars") != -1 -->
+        <td><sfr-commands-command-listen-save-vars params='commandActionObject: $data, allowedVariables: $parent.allowedVariables, profile: $parent.profile, locked: $parent.locked'></sfr-commands-command-listen-save-vars></td>
+        <!-- /ko -->
         <td></td>
-          
       </tr>
       <!-- /ko -->
       <tr>
-        <td><sfr-variables params='variables: variables, profile: profile, locked: locked'></sfr-variables></td>
+        <td><sfr-commands-command-variables params='variables: variables, allowedVariables: allowedVariables, profile: profile, locked: locked'></sfr-commands-command-variables></td>
       </tr>
-      <!-- <dl>
-        <dd></dd>
-      </dl> -->
-      
-      <!-- <tr>
-        <td>
-          <button class="btn btn-primary" data-bind="click: addRow, attr: {disabled: locked}">{{ _('+') }}</button>
-          <button class="btn btn-danger" data-bind="click: deleteRow, attr: {disabled: locked}">{{ _('-') }}</button>
-        </td>
-      </tr> -->
     </tbody>
   </table>
 </template>
 
-<template id='template-sfr-commands-command-printer'>
 
+<template id='template-sfr-commands-command-variables'>
+    <dl>
+      <dt><span><strong>Variable values to set:</strong></span><span data-bind="ifnot: lockProvided"><button data-bind="css: lockedClass, click: toggleLock"></button></span></dt>
+      <dd>
+        <table data-bind="hidden: lockProvided">
+          <tbody data-bind="if: localAllowedVariables().length > 0">
+            <tr>
+              <td><select data-bind="options: localAllowedVariables, value: newVariableKey, attr: {disabled: locked}"></select></td>
+              <td><input data-bind="textInput: newVariableValue, attr: {disabled: locked}" /></td>
+              <td>
+                <button class="btn btn-primary" data-bind="click: addVariable, attr: {disabled: locked}">{{ _('+') }}</button>
+              </td>
+            </tr>
+          </tbody>
+          <tbody data-bind="foreach: variables">
+            <tr>
+              <td data-bind="text: $data.key"></td>
+              <td><input data-bind="textInput: value, attr: {disabled: $parent.locked}"/></td>
+              <td>
+                <button class="btn btn-danger" data-bind="click: $parent.deleteVariable.bind(key, $index), attr: {disabled: $parent.locked}">{{ _('-') }}</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </dd>
+    <dl>
+  </template>
+
+
+
+<template id='template-sfr-commands-command-printer'>
   <table>
     <tbody>
       <tr>
@@ -98,6 +119,26 @@
       <!-- /ko -->
       <tr>
         <td><button class="btn btn-primary" data-bind="click: addLine, attr: {disabled: locked}">{{ _('+') }}</button></td>
+      </tr>
+    </tbody>
+  </table>
+</template>
+
+<template id='template-sfr-commands-command-listen-save-vars'>
+
+  <table>
+    <tbody>
+      <tr>
+        <td><strong>Command Type:</strong></td>
+        <td data-bind="text: type"></td>
+      </tr>
+      <tr>
+        <td>
+          Select one or more variables:
+        </td>
+        <td>
+          <select class="variableMultiSelector" data-bind="options: allowedVariables(), selectedOptions: variables, attr: {disabled: locked, size: allowedVariables().length}" multiple="true"></select>
+        </td>
       </tr>
     </tbody>
   </table>
