@@ -1,14 +1,28 @@
 {% include 'template_sfr_profile.jinja2' %}
 
+
+<div class="keyboardDataStream">
+  <button class="btn btn-default" data-bind="css: expandedClass, click: toggleExpanded"></button>
+  <table data-bind="foreach: activeListeningText, visible: expanded">
+    <tr>
+      <td style="text-align:right" data-bind="text: $data"></td>
+    </tr>
+  </table>
+</div>
+
+
+
 <h2>
   USB Keyboard Settings
 </h2>
+
+
 
 <table>
   <thead>
     <tr>
       <td><strong>Active Profile:</strong></td>
-      <td><select data-bind="options: profileNames, value: activeProfileName"></select></td>
+      <td><select class="profileSelect" data-bind="options: profileNames, value: activeProfileName"></select></td>
       <td><button class="btn btn-primary" data-bind="click: createProfile">{{ _('+') }}</button></td>
       <td><button class="btn btn-default" data-bind="click: configureDevice">{{ _('Device listener configuration') }}</button></td>
       
@@ -18,6 +32,9 @@
     <tr>
   </thead>
 </table>
+
+
+
 <hr>
 
 <div data-bind="foreach: profiles">

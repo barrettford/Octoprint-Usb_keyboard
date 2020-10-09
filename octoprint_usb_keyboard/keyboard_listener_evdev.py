@@ -18,14 +18,14 @@ class KeyboardListenerThread(threading.Thread):
     device = InputDevice(self.device_path)
     
     key_dict = {}
-    KEY_STATE = ["released", "pressed", "pressed"]
+    KEY_STATE = ["released", "pressed", "pressed"]  # TODO: maybe support 'hold' some day...
     try:
       for event in device.read_loop():
         if event.type == ecodes.EV_KEY:
           key_event = categorize(event)
         
           key_name = key_event.keycode
-          key_name = key_name.replace("KEY_", "")
+          key_name = key_name.replace("KEY_", "").lower()
           key_state = KEY_STATE[key_event.keystate]
           if key_name not in key_dict or key_dict.get(key_name) != key_state:
             key_dict[key_name] = key_state

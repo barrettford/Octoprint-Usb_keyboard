@@ -9,7 +9,7 @@
 $(function() {
   function Usb_keyboardViewModel(parameters) {
     var self = this;
-    Expandable.call(self, "settings")
+    Expandable.call(self, "settings", ko.observable(true))
 
     // assign the injected parameters, e.g.:
     // self.loginStateViewModel = parameters[0];
@@ -22,6 +22,34 @@ $(function() {
     self.devicePath = ko.observable();
     self.trialDevicePath = ko.observable();
     
+    ko.extenders.numeric = function(target, precision) {
+        //create a writable computed observable to intercept writes to our observable
+        var result = ko.pureComputed({
+            read: target,  //always return the original observables value
+            write: function(newValue) {
+                var current = target(),
+                    roundingMultiplier = Math.pow(10, precision),
+                    newValueAsNum = isNaN(newValue) ? 0 : +newValue,
+                    valueToWrite = Math.round(newValueAsNum * roundingMultiplier) / roundingMultiplier;
+ 
+                //only write if it changed
+                if (valueToWrite !== current) {
+                    target(valueToWrite);
+                } else {
+                    //if the rounded value is the same, but a different value was written, force a notification for the current field
+                    if (newValue !== current) {
+                        target.notifySubscribers(valueToWrite);
+                    }
+                }
+            }
+        }).extend({ notify: 'always' });
+ 
+        //initialize with current value to make sure it is rounded appropriately
+        result(target());
+ 
+        //return the new computed observable
+        return result;
+    };
     
     function Lockable(description, locked) {
       var self = this
@@ -71,6 +99,38 @@ $(function() {
         return self.expanded() ? 'fa fa-caret-down' : 'fa fa-caret-left';
       });
     }
+    function SelfManaged(targetArray, selfObject) {
+      var self = this
+      
+      self.selfObject = selfObject;
+      self.targetArray = targetArray
+      
+      self.deleteSelf = function() {
+        self.targetArray.remove(self.selfObject)
+      }
+      
+      self.moveSelfUp = function() {
+        var currentPosition = self.targetArray.indexOf(self.selfObject)
+        
+        if (!currentPosition == 0) {
+          self.targetArray.remove(self.selfObject)
+          self.targetArray.splice(currentPosition - 1, 0, self.selfObject)
+        }
+      }
+      
+      self.moveSelfDown = function() {
+        var currentPosition = self.targetArray.indexOf(self.selfObject)
+        var currentLastIndex = self.targetArray().length - 1
+        
+        if (currentPosition != currentLastIndex) {
+          self.targetArray.remove(self.selfObject)
+          self.targetArray.splice(currentPosition + 1, 0, self.selfObject)
+        }
+      }
+    }
+    function NonDuplicateAdd(targetArray, sendingKey) {
+      
+    }
     
     function KeyboardViewModel(params) {
       var self = this;
@@ -79,8 +139,19 @@ $(function() {
       // console.log("Keyboard View Model raw", params)
       // console.log("Keyboard View Model self", self)
 
-      self.keyboard = params.keyboard
-      self.profile = params.profile
+      self.keyboard = params.keyboard;
+      self.profile = params.profile;
+      self.keyboardScale = ko.observable();
+      
+      // self.keyboardScaleValue = ko.computed({
+//           read: function() {
+//             return self.keyboardScale();
+//           },
+//           write: function(newValue) {
+//             self.keyboardScale(newValue);
+//           },
+//           owner: self
+//         });
 
       self.keyboardScaleMultiplier = ko.observable();
 
@@ -224,6 +295,8 @@ $(function() {
       var self = this
       Lockable.call(self, "commands")
       Expandable.call(self, "commands")
+      SelfManaged.call(self, params.parentArray, params.commandObject)
+      
 
       // console.log("CommandsCommandViewModel raw", params)
       // console.log("CommandsCommandViewModel self", self)
@@ -234,6 +307,34 @@ $(function() {
       self.released = params.commandObject.value.released
       self.variables = params.commandObject.value.variables
       self.allowedVariables = params.allowedVariables
+      self.allowedCommandActions = ["printer", "plugin_psucontrol", "save_vars", "listen_vars"]
+      
+      self.newCommandAction = ko.observable()
+      
+      self.createCommandAction = function(list) {
+        var type = self.newCommandAction()
+        var newCommandActionMap = {"type":type}
+        switch(type) {
+          case "printer":
+            newCommandActionMap["gcode"] = []
+            newCommandActionMap["send_while_printing"] = false
+            break;
+          case "save_vars":
+          case "listen_vars":
+            newCommandActionMap["variables"] = []
+            break;
+          case "plugin_psucontrol":
+            newCommandActionMap["command"] = "on"
+            newCommandActionMap["hotend_max"] = 50
+            break;
+          default:
+            console.log("We should never get here...")
+        } 
+        
+        list.push(ko.mapping.fromJS(newCommandActionMap))
+        
+        
+      }
     }
     ko.components.register('sfr-commands-command', {
       viewModel: CommandsCommandViewModel,
@@ -241,9 +342,13 @@ $(function() {
     });
     
     
+
+    
+    
     function CommandsCommandPrinterViewModel(params) {
       var self = this
       Lockable.call(self, "action", params.locked)
+      SelfManaged.call(self, params.parentArray, params.commandActionObject)
 
       // console.log("CommandsCommandPrinterViewModel raw", params)
       // console.log("CommandsCommandPrinterViewModel self", self)
@@ -276,6 +381,8 @@ $(function() {
     function CommandsCommandListenSaveVarsViewModel(params) {
       var self = this
       Lockable.call(self, "action", params.locked)
+      SelfManaged.call(self, params.parentArray, params.commandActionObject)
+      
       //
       // console.log("CommandsCommandListenSaveVarsViewModel raw", params)
       // console.log("CommandsCommandListenSaveVarsViewModel self", self)
@@ -336,38 +443,11 @@ $(function() {
     });
     
     
-    ko.extenders.numeric = function(target, precision) {
-        //create a writable computed observable to intercept writes to our observable
-        var result = ko.pureComputed({
-            read: target,  //always return the original observables value
-            write: function(newValue) {
-                var current = target(),
-                    roundingMultiplier = Math.pow(10, precision),
-                    newValueAsNum = isNaN(newValue) ? 0 : +newValue,
-                    valueToWrite = Math.round(newValueAsNum * roundingMultiplier) / roundingMultiplier;
- 
-                //only write if it changed
-                if (valueToWrite !== current) {
-                    target(valueToWrite);
-                } else {
-                    //if the rounded value is the same, but a different value was written, force a notification for the current field
-                    if (newValue !== current) {
-                        target.notifySubscribers(valueToWrite);
-                    }
-                }
-            }
-        }).extend({ notify: 'always' });
- 
-        //initialize with current value to make sure it is rounded appropriately
-        result(target());
- 
-        //return the new computed observable
-        return result;
-    };
-    
     function CommandsCommandPluginPsucontrolViewModel(params) {
       var self = this
       Lockable.call(self, "action", params.locked)
+      SelfManaged.call(self, params.parentArray, params.commandActionObject)
+      
 
       // console.log("CommandsCommandPluginPsucontrolViewModel raw", params)
       // console.log("CommandsCommandPluginPsucontrolViewModel self", self)
@@ -494,14 +574,12 @@ $(function() {
       self.configuringDevice(!self.configuringDevice())
       
       if (self.configuringDevice()) {
-        console.log("Turning on listening...")
         OctoPrint.simpleApiCommand('usb_keyboard', 'query_devices', {});
+        console.log("Turning on listening...")
         OctoPrint.simpleApiCommand('usb_keyboard', 'active_listening', {"action":"start"});
         $('#UsbDeviceConfigModal').modal('show');
       }
       else {
-        console.log("Turning off listening...")
-        OctoPrint.simpleApiCommand('usb_keyboard', 'active_listening', {"action":"stop"});
         $('#UsbDeviceConfigModal').modal('hide');
       }
     }
@@ -523,7 +601,16 @@ $(function() {
       self.profiles = self.settingsViewModel.settings.plugins.usb_keyboard.profiles
       self.devicePath = self.settingsViewModel.settings.plugins.usb_keyboard.device_path
       
+      
       $( "#UsbDeviceConfigModal" ).on('hidden', self.configureDevice);
+      $('#settings_plugin_usb_keyboard_link > a').on('click', function(){
+        console.log("Turning on listening...")
+        OctoPrint.simpleApiCommand('usb_keyboard', 'active_listening', {"action":"start"});
+      });
+        
+        //<a href="#settings_plugin_usb_keyboard" data-toggle="tab">USB Keyboard</a>
+      
+      
       // $( "#UsbDeviceConfigModal" ).on('shown', function(){
       //     alert("I want this to appear after the modal has opened!");
       // });
@@ -544,8 +631,16 @@ $(function() {
       // });
     }
     
+    self.onSettingsShown = function() {
+      // console.log("Turning on listening...")
+      // OctoPrint.simpleApiCommand('usb_keyboard', 'active_listening', {"action":"start"});
+    }
+    
     self.onSettingsBeforeSave = function() {
       console.log("Settings saving", self.settingsViewModel.settings.plugins.usb_keyboard)
+      
+      console.log("Turning off listening...")
+      OctoPrint.simpleApiCommand('usb_keyboard', 'active_listening', {"action":"stop"});
       
       
       
@@ -553,9 +648,14 @@ $(function() {
       // TODO: remove duplicate profile names
       // self.settingsViewModel.settings.plugins.usb_keyboard.profiles = self.profiles;
     }
+
     
     self.onSettingsHidden = function() {
       console.log("Settings closed", self.settingsViewModel.settings.plugins.usb_keyboard)
+      
+      console.log("Turning off listening...")
+      OctoPrint.simpleApiCommand('usb_keyboard', 'active_listening', {"action":"stop"});
+      
       
       $('#settings_plugin_usb_keyboard button.fa-unlock').trigger('click');     // Lock all locks
       $('#settings_plugin_usb_keyboard button.fa-caret-down').trigger('click'); // Contract all expansions
@@ -605,9 +705,9 @@ $(function() {
           // console.log("Getting key event", data)
           key = data["key"]
           keyState = data["key_state"]
-          self.activeListeningText.push("Key '" + key + "' " + keyState)
+          self.activeListeningText.unshift("'" + key + "' " + keyState)
           if (self.activeListeningText().length > 10) {
-            self.activeListeningText.shift()
+            self.activeListeningText.pop()
           }
           break;
         default:

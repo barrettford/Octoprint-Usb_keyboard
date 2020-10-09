@@ -4,7 +4,7 @@
 
 
 <template id='template-sfr-profile'>
-  <span><strong>Profile</strong></span><button data-bind="css: lockedClass, click: toggleLock"></button>
+  <span><strong>Profile</strong></span>&emsp;<button class="btn btn-default" data-bind="css: lockedClass, click: toggleLock"></button>
   <table>
     <tr>
       <td><input data-bind="textInput: newProfileName, attr: {disabled: locked}"/></td>

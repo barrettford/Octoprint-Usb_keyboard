@@ -1,9 +1,7 @@
 /* TODO: Have your plugin's CSS files generated to here. */
 	
 
-#settings_plugin_usb_keyboard
-
-button#keyboardKey {
+#settings_plugin_usb_keyboard button#keyboardKey {
 /*  transition-duration: 0.4s;*/
   text-align: center;
 /*  border-radius: 12px;*/
@@ -12,12 +10,47 @@ button#keyboardKey {
   height: 45px;
 }
 
-#settings_plugin_usb_keyboard
-table#profileTable {
+#settings_plugin_usb_keyboard table#profileTable {
   text-align: center;
 }
 
-#settings_plugin_usb_keyboard
-select#profileSelect {
+#settings_plugin_usb_keyboard select.profileSelect {
   font-size: large;
+}
+
+#settings_plugin_usb_keyboard select {
+  width:18ch;
+  vertical-align:middle;
+  margin-bottom:0px;
+}
+
+#settings_plugin_usb_keyboard td {
+  display:table-cell;
+  vertical-align:middle;
+}
+
+#settings_plugin_usb_keyboard li {
+  vertical-align:middle;
+}
+
+#settings_plugin_usb_keyboard input {
+  width:18ch;   
+}
+
+#settings_plugin_usb_keyboard input.temperature {
+  width:4ch;   
+}
+
+#settings_plugin_usb_keyboard input.gcodeLine {
+  width:30ch;   
+}
+
+#settings_plugin_usb_keyboard div.keyboardDataStream {
+  text-align: right;
+  border-radius: 6px;
+  border: 1px solid rgba(0,0,0,0.3);
+  position: -webkit-sticky; /* Safari */
+  position: sticky;
+  top: 0;
+  float: right;
 }

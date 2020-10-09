@@ -1,6 +1,6 @@
 <template id='template-sfr-variables'>
   <dl>
-    <dt><span><strong>Variables</strong></span><span data-bind="ifnot: lockProvided"><button data-bind="css: lockedClass, click: toggleLock"></button></span></dt>
+    <dt><span><strong>Variables</strong></span>&emsp;<span data-bind="ifnot: lockProvided"><button class="btn btn-default" data-bind="css: lockedClass, click: toggleLock"></button></span></dt>
     <dd>
       <table data-bind="hidden: lockProvided">
         <tbody>
