@@ -139,9 +139,9 @@ $(function() {
       // console.log("Keyboard View Model raw", params)
       // console.log("Keyboard View Model self", self)
 
-      self.keyboard = params.keyboard;
+      self.keyboard = params.keyboard.board;
+      self.keyboardScale = params.keyboard.scale;
       self.profile = params.profile;
-      self.keyboardScale = ko.observable();
       
       // self.keyboardScaleValue = ko.computed({
 //           read: function() {
@@ -152,8 +152,6 @@ $(function() {
 //           },
 //           owner: self
 //         });
-
-      self.keyboardScaleMultiplier = ko.observable();
 
       // this will be called when the user clicks the "+ Row" button and add a new row of data
       self.addRow = function() {
@@ -182,6 +180,7 @@ $(function() {
       self.keys = params.keys
       self.profile = params.profile
       self.row = params.row
+      self.keyboardScale = params.keyboardScale
       self.locked = params.locked
       
       self.addKey = function() {
@@ -212,6 +211,16 @@ $(function() {
       self.row = params.row
       self.column = params.column
       self.locked = params.locked
+      
+      self.keyboardScale = params.keyboardScale
+      
+      self.calcWidth = ko.pureComputed(function() {
+        return (15.5 * self.keyboardScale()).toString() + "px"
+      });
+      
+      self.calcHeight = ko.pureComputed(function() {
+        return (15 * self.keyboardScale()).toString() + "px"
+      });
       
       
       self.configureKey = function() {
@@ -340,9 +349,6 @@ $(function() {
       viewModel: CommandsCommandViewModel,
       template: { element: 'template-sfr-commands-command' }
     });
-    
-    
-
     
     
     function CommandsCommandPrinterViewModel(params) {
@@ -545,9 +551,10 @@ $(function() {
       if (! dupeDetected) {
         var newProfile = ko.mapping.fromJS({"key":newProfileName,
         "value":{ "commands":[],
-                  "keyboard":[
-                    {"keys":[null]}
-                  ],
+                  "keyboard":{
+                    "scale": 3,
+                    "board": [{"keys":[null]}]
+                  },
                   "variables":[]
                 }});
         newProfile.key(newProfileName)
@@ -685,8 +692,8 @@ $(function() {
           
           self.profiles().some(function(value) {
             if (value.key() == profile) {
-              console.log("Key targeted ", self.profiles()[targetedProfileIndex].value.keyboard()[row].keys()[column]);
-              value.value.keyboard()[row].keys.splice(column, 1, keyName)
+              console.log("Key targeted ", self.profiles()[targetedProfileIndex].value.keyboard.board()[row].keys()[column]);
+              value.value.keyboard.board()[row].keys.splice(column, 1, keyName)
               return true
             }
           })

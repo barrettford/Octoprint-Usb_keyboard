@@ -59,11 +59,14 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     key = payload["key"]
     key_state = payload["key_state"]
     
+    
+    
     if self._active_listening:
       if time.time() - self._active_listening_start > 10 * 60:
         self._active_listening_start = False
       else:
         self._plugin_manager.send_plugin_message(self._identifier, {"key":key, "key_state":key_state, "reply":"active_listening"})
+    
     
     # print(all_events())
     if key_state == "pressed":
@@ -336,9 +339,12 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       profiles=[
         {"key":"test","value":{
           "commands":[],
-          "keyboard":[
-            {"keys":[None]}
-          ],
+          "keyboard": {
+            "scale": 3,
+            "board": [
+              {"keys":[None]}
+            ]
+          },
           "variables":[]
         }},
         {"key":"default", "value":{
@@ -382,14 +388,17 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
             {"key":"/", "value":         {"pressed": [{"type":"printer", "gcode":["M104 S<hotend>","M140 S<bed>"], "send_while_printing": False}],       "released": [], "variables":  []                                }},  # set hotend and bed
             {"key":"esc", "value":       {"pressed": [{"type":"plugin_psucontrol", "command":"toggle", "hotend_max":50 }],               "released": [], "variables":  []                                }}   # turn off PSU if hotends < 50c
           ],
-          "keyboard": [
+          "keyboard": {
+            "scale": 3,
+            "board": [
               {"keys":["esc", None, "tab", "="]},
               {"keys":[None, "/", "*", "backspace"]},
               {"keys":["7", "8", "9", "-"]},
               {"keys":["4", "5", "6", "+"]},
               {"keys":["1", "2", "3", None]},
               {"keys":[None, "0", ".", "\\x03"]}
-          ],
+            ]
+          },
           "variables":[
             {"key":"distance", "value":   1 },
             {"key":"bed",      "value":  60 },
@@ -412,8 +421,13 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
 
   def on_api_command(self, command, data):
     data["reply"] = command
+    
+    # self._logger.info(f"Received command from frontend '{command}' with '{data}'.")
+    
+    
     if command == "key_discovery":
       self._logger.info(f"key_discovery called, row is {data['row']}, key is {data['column']}")
+      self.key_discovery = data
     elif command == "query_devices":
       self._logger.info(f"configure_listener called, asking listener for more data")
       data["message"], data["options"] = self.listener.get_device_info()

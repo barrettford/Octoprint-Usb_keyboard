@@ -1,11 +1,12 @@
 <template id='template-sfr-keyboard'>
   <span><strong>Keyboard</strong></span>&emsp;<button class="btn btn-default" data-bind="css: lockedClass, click: toggleLock"></button>
+  <input type="number" style="width: 200px" data-bind="attr: {disabled: locked}, slider: {min: 2, max: 6, step: .5, value: keyboardScale, tooltip: 'hide'}">
   <table>
     <tbody>
       <!-- ko foreach: keyboard -->
       <tr>
         <td>
-          <sfr-keyboard-row params='keys: $data.keys, row: $index, profile: $parentContext.$data.profile, locked: $parentContext.$data.locked'></sfr-keyboard-row>
+          <sfr-keyboard-row params='keys: $data.keys, keyboardScale: $parent.keyboardScale, row: $index, profile: $parentContext.$data.profile, locked: $parentContext.$data.locked'></sfr-keyboard-row>
         </td>
       </tr>
       <!-- /ko -->
@@ -24,7 +25,7 @@
     <tr>
        <!-- ko foreach: keys -->
       <td>
-        <sfr-keyboard-row-key params='text: $data, column: $index, row: $parent.row, profile: $parent.profile, locked: $parentContext.$data.locked'></sfr-keyboard-row-key>
+        <sfr-keyboard-row-key params='text: $data, keyboardScale: $parent.keyboardScale, column: $index, row: $parent.row, profile: $parent.profile, locked: $parentContext.$data.locked'></sfr-keyboard-row-key>
       </td>
       <!-- /ko -->
       <td>
@@ -36,5 +37,5 @@
 </template>
 
 <template id="template-sfr-keyboard-row-key">
-  <button class="btn btn-default" id="keyboardKey" data-bind="text: text, click: configureKey, style: { opacity: text == null ? 0.4 : 1.0 }, attr: {disabled: locked}"></button>
+  <button class="btn btn-default" id="keyboardKey" data-bind="text: text, click: configureKey, style: { width: calcWidth(), height: calcHeight(), opacity: text() == null ? 0.4 : 1.0 }, attr: {disabled: locked}"></button>
 </template>
