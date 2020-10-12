@@ -5,11 +5,15 @@
  * License: AGPLv3
  */
 
+var CURRENT_KEY = ko.observable(null)
 
 $(function() {
   function Usb_keyboardViewModel(parameters) {
     var self = this;
     Expandable.call(self, "settings", ko.observable(true))
+    
+    // var KEY_DISCOVERY_LIST = []
+    
 
     // assign the injected parameters, e.g.:
     // self.loginStateViewModel = parameters[0];
@@ -21,6 +25,9 @@ $(function() {
     self.activeListeningText = ko.observableArray();
     self.devicePath = ko.observable();
     self.trialDevicePath = ko.observable();
+    self.currentKey = ko.observable(null);
+    self.keyDiscovery = []
+    
     
     ko.extenders.numeric = function(target, precision) {
         //create a writable computed observable to intercept writes to our observable
@@ -128,6 +135,37 @@ $(function() {
         }
       }
     }
+    function KeyDiscoverable(keyField, root) {
+      var self = this
+      
+      self.key = keyField;
+      self.root = root;
+      
+      self.setKey = function(value) {
+        self.key(value)
+      }
+      
+      
+      self.keyDiscovery = function(model) {
+        
+        // self.root.currentKey(null)
+        // self.editingKey(true)
+        
+        // console.log("Key '" + self.text() + "' pressed, [" + self.row() + "][" + self.column() + "] profile = " + self.profile())
+        
+        self.root.keyDiscovery.push(self)
+      
+        // TODO:  DON'T LOSE THIS
+        OctoPrint.simpleApiCommand('usb_keyboard', 'key_discovery', {});// {"row":self.row(), "column":self.column(), "profile":self.profile()});
+
+        // self.keyDetectionBinding(null)
+        // self.settings.settings.plugins.usb_keyboard.key_discovery(null)
+        // self.settingsViewModel.saveData({plugins: {usb_keyboard: {key_discovery: {"row":row,"key":key}}}})
+        // self.keyDetectionBinding(self.settings.settings.plugins.usb_keyboard.key_discovery())
+        // console.log("self.keyDetectionBinding() ", self.keyDetectionBinding())
+        // console.log("self.settings() ", self.settingsViewModel.settings.plugins.usb_keyboard.key_discovery)
+      };
+    }
     function NonDuplicateAdd(targetArray, sendingKey) {
       
     }
@@ -139,9 +177,34 @@ $(function() {
       // console.log("Keyboard View Model raw", params)
       // console.log("Keyboard View Model self", self)
 
-      self.keyboard = params.keyboard.board;
+      self.keyboardRows = params.keyboard.board;
+      self.editingKey = ko.observable(null);
       self.keyboardScale = params.keyboard.scale;
       self.profile = params.profile;
+      
+      self.spacerCount = ko.pureComputed(function() {
+        var maxRowSize = 0;
+      
+      
+        self.keyboardRows().forEach(function(value, index, array) {
+          var keys = value.keys();
+          var rowSize = 0;
+          
+          keys.forEach(function(value, index, array) {
+            rowSize += value.w()
+          });
+          
+          if (rowSize > maxRowSize) {
+            maxRowSize = rowSize;
+          }
+        });
+        
+        return maxRowSize * 4;
+      });
+      
+      self.spacerWidth = ko.pureComputed(function() {
+        return (self.keyboardScale() * 15)/4;
+      });
       
       // self.keyboardScaleValue = ko.computed({
 //           read: function() {
@@ -156,14 +219,14 @@ $(function() {
       // this will be called when the user clicks the "+ Row" button and add a new row of data
       self.addRow = function() {
         console.log("Clicked + row");
-        self.keyboard.push({"keys":ko.observableArray([null])})
+        self.keyboardRows.push(ko.mapping.fromJS({"keys":[{"key":null, "alias":null, "w":1, "h":1}]}))
       };
 
       // this will be called when the user clicks the "+ Row" button and add a new row of data
       self.deleteRow = function() {
         console.log("Clicked - row");
         // TODO:  Put an "Are you sure?" dialog if the cell has config
-        self.keyboard.pop()
+        self.keyboardRows.pop()
       };
     }
     ko.components.register('sfr-keyboard', {
@@ -178,6 +241,7 @@ $(function() {
       // console.log("Keyboard Row View Model self", self)
       
       self.keys = params.keys
+      self.editingKey = params.editingKey;
       self.profile = params.profile
       self.row = params.row
       self.keyboardScale = params.keyboardScale
@@ -185,7 +249,7 @@ $(function() {
       
       self.addKey = function() {
         console.log("Clicked + key");
-        self.keys.push(null)
+        self.keys.push(ko.mapping.fromJS({"key":null, "alias":null, "w":1, "h":1}))
       };
 
       // this will be called when the user clicks the "+ Column" button and add a new column of data
@@ -203,10 +267,18 @@ $(function() {
     
     function KeyboardRowKeyViewModel(params) {
       var self = this
+      KeyDiscoverable.call(self, params.keyData.key, params.root)
+      
       // console.log("Keyboard Row Key View Model raw", params)
       // console.log("Keyboard Row Key View Model self", self)
       
-      self.text = ko.observable(params.text)
+      
+      self.widthScale = params.keyData.w
+      self.heightScale = params.keyData.h
+      self.alias = params.keyData.alias
+      self.editingKey = params.editingKey
+      
+      
       self.profile = params.profile
       self.row = params.row
       self.column = params.column
@@ -214,27 +286,52 @@ $(function() {
       
       self.keyboardScale = params.keyboardScale
       
+      self.rowSpan = ko.pureComputed(function() {
+        return self.heightScale()
+      });
+      
+      self.colSpan = ko.pureComputed(function() {
+        return self.widthScale() * 4
+      });
+      
+      self.keyText = ko.pureComputed(function() {
+        return (self.alias() == null ? self.key() : self.alias())
+      });
+      
+      self.clearKey = function() {
+        self.setKey(null)
+        self.widthScale(1)
+        self.heightScale(1)
+      }
+      
+      self.clearAlias = function() {
+        self.alias(null)
+      }
+      
       self.calcWidth = ko.pureComputed(function() {
-        return (15.5 * self.keyboardScale()).toString() + "px"
+        return (15 * self.widthScale() * self.keyboardScale()).toString() + "px"
       });
       
       self.calcHeight = ko.pureComputed(function() {
-        return (15 * self.keyboardScale()).toString() + "px"
+        return (15 * self.heightScale() * self.keyboardScale()).toString() + "px"
       });
       
+      // self.keyModalId = ko.pureComputed(function() {
+      //   return "SingleKeyRow" + (self.row()).toString() + "Col" + (self.column()).toString() + "Key" + self.key()
+      // });
       
-      self.configureKey = function() {
-        console.log("Key '" + self.text() + "' pressed, [" + self.row() + "][" + self.column() + "] profile = " + self.profile())
+      self.editKey = function() {
+        // console.log("Id", self.keyModalId())
+        // self.editingKey(true)
+        self.editingKey(self)
+        // $('#SingleKeyModal').modal('show');
+      };
       
-        // TODO:  DON'T LOSE THIS
-        OctoPrint.simpleApiCommand('usb_keyboard', 'key_discovery', {"row":self.row(), "column":self.column(), "profile":self.profile()});
-
-        // self.keyDetectionBinding(null)
-        // self.settings.settings.plugins.usb_keyboard.key_discovery(null)
-        // self.settingsViewModel.saveData({plugins: {usb_keyboard: {key_discovery: {"row":row,"key":key}}}})
-        // self.keyDetectionBinding(self.settings.settings.plugins.usb_keyboard.key_discovery())
-        // console.log("self.keyDetectionBinding() ", self.keyDetectionBinding())
-        // console.log("self.settings() ", self.settingsViewModel.settings.plugins.usb_keyboard.key_discovery)
+      self.clearEditingKey = function() {
+        // console.log("Id", self.keyModalId())
+        // self.editingKey(true)
+        self.editingKey(null)
+        // $('#SingleKeyModal').modal('show');
       };
     }
     ko.components.register('sfr-keyboard-row-key', {
@@ -553,7 +650,7 @@ $(function() {
         "value":{ "commands":[],
                   "keyboard":{
                     "scale": 3,
-                    "board": [{"keys":[null]}]
+                    "board": [{"key":null, "alias":null, "w":1, "h":1}]
                   },
                   "variables":[]
                 }});
@@ -676,12 +773,14 @@ $(function() {
       
       switch(data["reply"]) {
         case "key_discovery":
-          var row = data["row"]
-          var column = data["column"]
-          var keyName = data["name"]
-          var profile = data["profile"]
           
-          var targetedProfileIndex = 0
+          
+          // var row = data["row"]
+          // var column = data["column"]
+          var keyName = data["name"]
+          // var profile = data["profile"]
+          //
+          // var targetedProfileIndex = 0
             
           // function findTargetedProfile(value, index, array) {
 //             if (value.key() == profile) {
@@ -690,17 +789,23 @@ $(function() {
 //           }
 //           self.profiles().forEach(findTargetedProfile);
           
-          self.profiles().some(function(value) {
-            if (value.key() == profile) {
-              console.log("Key targeted ", self.profiles()[targetedProfileIndex].value.keyboard.board()[row].keys()[column]);
-              value.value.keyboard.board()[row].keys.splice(column, 1, keyName)
-              return true
-            }
-          })
+          // self.profiles().some(function(value) {
+          //   if (value.key() == profile) {
+          //     console.log("Key targeted ", self.profiles()[targetedProfileIndex].value.keyboard.board()[row].keys()[column]);
+          //     value.value.keyboard.board()[row].keys.splice(column, 1, keyName)
+          //     return true
+          //   }})
       
           // console.log("Key targeted ", self.profiles()[targetedProfileIndex].value.keyboard()[row].keys()[column]);
 //
 //           self.profiles()[targetedProfileIndex].value.keyboard()[row].keys.splice(column, 1, keyName)
+          function setKeys(value, index, array) {
+            value.setKey(keyName)
+          }
+      
+          self.keyDiscovery.forEach(setKeys);
+          self.keyDiscovery = []
+          
           break;
         case "query_devices":
           // console.log("Getting info about attached USB devices", data)

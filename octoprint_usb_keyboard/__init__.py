@@ -342,7 +342,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
           "keyboard": {
             "scale": 3,
             "board": [
-              {"keys":[None]}
+              {"keys":[{"key":None, "alias":None, "w":1, "h":1}]},
             ]
           },
           "variables":[]
@@ -391,12 +391,17 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
           "keyboard": {
             "scale": 3,
             "board": [
-              {"keys":["esc", None, "tab", "="]},
-              {"keys":[None, "/", "*", "backspace"]},
-              {"keys":["7", "8", "9", "-"]},
-              {"keys":["4", "5", "6", "+"]},
-              {"keys":["1", "2", "3", None]},
-              {"keys":[None, "0", ".", "\\x03"]}
+              {"keys":[{"key":"esc", "alias":None, "w":1, "h":1}, {"key":None, "alias":None, "w":1, "h":1}, {"key":"tab", "alias":None, "w":1, "h":1}, {"key":"=", "alias":None, "w":1, "h":1}]},
+              {"keys":[{"key":None, "alias":None, "w":1, "h":1}, {"key":"/", "alias":None, "w":1, "h":1}, {"key":"*", "alias":None, "w":1, "h":1}, {"key":"backspace", "alias":None, "w":1, "h":1}]},
+              {"keys":[{"key":"7", "alias":None, "w":1, "h":1}, {"key":"8", "alias":None, "w":1, "h":1}, {"key":"9", "alias":None, "w":1, "h":1}, {"key":"-", "alias":None, "w":1, "h":1}]},
+              {"keys":[{"key":"4", "alias":None, "w":1, "h":1}, {"key":"5", "alias":None, "w":1, "h":1}, {"key":"6", "alias":None, "w":1, "h":1}, {"key":"+", "alias":None, "w":1, "h":1}]},
+              {"keys":[{"key":"1", "alias":None, "w":1, "h":1}, {"key":"2", "alias":None, "w":1, "h":1}, {"key":"3", "alias":None, "w":1, "h":1}, {"key":"\\x03", "alias":"enter", "w":1, "h":2}]},
+              {"keys":[{"key":"0", "alias":None, "w":2, "h":1}, {"key":".", "alias":None, "w":1, "h":1}]}
+              # {"keys":[None, "/", "*", "backspace"]},
+              # {"keys":["7", "8", "9", "-"]},
+              # {"keys":["4", "5", "6", "+"]},
+              # {"keys":["1", "2", "3", None]},
+              # {"keys":[None, "0", ".", "\\x03"]}
             ]
           },
           "variables":[
@@ -413,7 +418,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
   
   def get_api_commands(self):
     return dict(
-      key_discovery=["row", "column", "profile"],
+      key_discovery=[],# ["row", "column", "profile"],
       query_devices=[],
       change_device_path=["device_path"],
       active_listening=["action"]
@@ -426,7 +431,9 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     
     
     if command == "key_discovery":
-      self._logger.info(f"key_discovery called, row is {data['row']}, key is {data['column']}")
+      # self._logger.info(f"key_discovery called, row is {data['row']}, key is {data['column']}")
+      self._logger.info("key_discovery called")
+      
       self.key_discovery = data
     elif command == "query_devices":
       self._logger.info(f"configure_listener called, asking listener for more data")
@@ -455,7 +462,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     # Define your plugin's asset files to automatically include in the
     # core UI here.
     return dict(
-      js=["js/usb_keyboard.js"],
+      js=["js/usb_keyboard.js", "js/knockout-repeat.js"],
       # clientjs=['js/requre.js'],
       # jsclient=['js/requre.js'],
       css=["css/usb_keyboard.css"],

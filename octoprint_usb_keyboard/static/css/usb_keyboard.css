@@ -27,7 +27,44 @@
 #settings_plugin_usb_keyboard td {
   display:table-cell;
   vertical-align:middle;
+  text-align:center;
 }
+
+#settings_plugin_usb_keyboard .sliderCell tr td {
+  height: 100px;
+  padding: 50px;
+}
+
+/*#settings_plugin_usb_keyboard .spacerCell tr td {
+
+
+}*/
+
+#settings_plugin_usb_keyboard .keyboardTable td {
+/*  border: 1px solid #ddd;*/
+  overflow: hidden;
+/*  display: table-column;*/
+  white-space: nowrap;
+  padding: 0; 
+  margin: 0;
+}
+
+#settings_plugin_usb_keyboard button.keyboardKey {
+/*  border: 1px solid #ddd;*/
+  overflow: hidden;
+/*  display: table-column;*/
+  white-space: nowrap;
+  padding: 0; 
+  margin: 0;
+}
+
+#settings_plugin_usb_keyboard .keyboardTable {
+  table-layout:fixed;
+}
+/*
+#settings_plugin_usb_keyboard .keyboardSpacer {
+  width:0px;
+}*/
 
 #settings_plugin_usb_keyboard li {
   vertical-align:middle;

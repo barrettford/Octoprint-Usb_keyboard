@@ -1,41 +1,81 @@
 <template id='template-sfr-keyboard'>
-  <span><strong>Keyboard</strong></span>&emsp;<button class="btn btn-default" data-bind="css: lockedClass, click: toggleLock"></button>
+  <span><strong>Keyboard</strong></span>&emsp;<button class="btn btn-default" data-bind="css: lockedClass, click: toggleLock"></button>&emsp;
   <input type="number" style="width: 200px" data-bind="attr: {disabled: locked}, slider: {min: 2, max: 6, step: .5, value: keyboardScale, tooltip: 'hide'}">
-  <table>
-    <tbody>
-      <!-- ko foreach: keyboard -->
+  <table class="keyboardTable" cellspacing="0" cellpadding="0">
+    <thead>
       <tr>
-        <td>
-          <sfr-keyboard-row params='keys: $data.keys, keyboardScale: $parent.keyboardScale, row: $index, profile: $parentContext.$data.profile, locked: $parentContext.$data.locked'></sfr-keyboard-row>
-        </td>
+        <td><button class="btn btn-primary" data-bind="click: addRow, attr: {disabled: locked}">{{ _('+') }}</button></td>
+        <td><button class="btn btn-danger" data-bind="click: deleteRow, attr: {disabled: locked}">{{ _('-') }}</button></td>
+        
+        <!-- ko repeat: {count: spacerCount} -->
+        
+        <td data-bind="attr: {width: spacerWidth()}"></td>
+        <!-- /ko -->
       </tr>
+    </thead>
+    <tbody data-bind="foreach: keyboardRows">
+      <!-- ko component: {
+          name: "sfr-keyboard-row",
+          params: { keys: $data.keys, editingKey: $parent.editingKey, keyboardScale: $parent.keyboardScale, row: $index, profile: $parentContext.$data.profile, locked: $parentContext.$data.locked }
+      } -->
       <!-- /ko -->
-      <tr>
-        <td>
-          <button class="btn btn-primary" data-bind="click: addRow, attr: {disabled: locked}">{{ _('+') }}</button>
-          <button class="btn btn-danger" data-bind="click: deleteRow, attr: {disabled: locked}">{{ _('-') }}</button>
-        </td>
-      </tr>
     </tbody>
   </table>
-</template>
-
-<template id="template-sfr-keyboard-row">
-  <table>
+  <table data-bind="with: editingKey">
     <tr>
-       <!-- ko foreach: keys -->
-      <td>
-        <sfr-keyboard-row-key params='text: $data, keyboardScale: $parent.keyboardScale, column: $index, row: $parent.row, profile: $parent.profile, locked: $parentContext.$data.locked'></sfr-keyboard-row-key>
-      </td>
-      <!-- /ko -->
-      <td>
-        <button class='btn btn-primary' data-bind='click: addKey, attr: {disabled: locked}'>{{ _('+') }}</button>
-        <button class='btn btn-danger' data-bind='click: deleteKey, attr: {disabled: locked}'>{{ _('-') }}</button>
-      </td>
+      <td>Key:</td>
+      <td><input data-bind="textInput: key" /></td>
+      <td><button class="btn btn-default" data-bind="click: keyDiscovery">{{ _('Get Key') }}</button></td>
+      <td><button class="btn btn-danger" data-bind="click: clearKey, attr: {disabled: (key() == null)}">{{ _('Clear Key') }}</button></td>
+    </tr>
+    <tr>
+      <td>Optional Alias:</td>
+      <td><input data-bind="textInput: alias" /></td>
+      <td></td>
+      <td><button class="btn btn-danger" data-bind="click: clearAlias, attr: {disabled: (alias() == null)}">{{ _('Clear Alias') }}</button></td>
+    </tr>
+    <tr class="sliderCell">
+      <td>Width Scale:</td>
+      <td class="sliderCell"><input type="number" style="width: 100px" data-bind="attr: {disabled: locked}, slider: {min: 1, max: 7, step: 0.25, value: widthScale, tooltip: 'hide'}"></td>
+      <td data-bind="text: widthScale"></td>
+      <td data-bind="attr: {rowspan: 2}"><button class="btn btn-default" id="keyboardKey" data-bind="text: keyText, style: { width: calcWidth(), height: calcHeight(), opacity: key() == null ? 0.4 : 1.0 }"></button></td>
+    </tr>
+    <tr class="sliderCell">
+      <td>Height Scale:</td>
+      <td class="sliderCell"><input type="number" style="width: 100px" data-bind="attr: {disabled: locked}, slider: {min: 1, max: 2, step: 1, value: heightScale, tooltip: 'hide'}"></td>
+      <td data-bind="text: heightScale"></td>
+    </tr>
+    <tr>
+      <td><button class="btn btn-default" data-bind="click: clearEditingKey">{{ _('Close') }}</button></td>
     </tr>
   </table>
 </template>
 
-<template id="template-sfr-keyboard-row-key">
-  <button class="btn btn-default" id="keyboardKey" data-bind="text: text, click: configureKey, style: { width: calcWidth(), height: calcHeight(), opacity: text() == null ? 0.4 : 1.0 }, attr: {disabled: locked}"></button>
+<template id="template-sfr-keyboard-row">
+
+    <tr>
+      <td>
+        <button class='btn btn-primary' data-bind='click: addKey, attr: {disabled: locked}'>{{ _('+') }}</button>
+      </td>
+      <td>
+        <button class='btn btn-danger' data-bind='click: deleteKey, attr: {disabled: locked}'>{{ _('-') }}</button>
+      </td>
+      <!-- ko foreach: keys -->
+      <!-- ko component: {
+          name: "sfr-keyboard-row-key",
+          params: { keyData: $data, editingKey: $parent.editingKey, keyboardScale: $parent.keyboardScale, root: $root, column: $index, row: $parent.row, profile: $parent.profile, locked: $parentContext.$data.locked }
+      } -->
+      <!-- /ko -->
+      <!-- /ko -->
+    </tr>
+
 </template>
+
+<template id="template-sfr-keyboard-row-key">
+  <!-- <td attr: {rowspan: rowSpan, colspan: colSpan> -->
+  <td data-bind="attr: {rowspan: rowSpan, colspan: colSpan}">
+    <button class="btn btn-default" class="keyboardKey" data-bind="text: keyText, click: editKey, style: {height: calcHeight(), width: calcWidth(), opacity: key() == null ? 0.4 : 1.0 }, attr: {disabled: locked}"></button>
+  </td>
+</template>
+
+

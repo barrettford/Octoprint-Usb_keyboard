@@ -22,7 +22,7 @@
 
 
 <template id='template-sfr-commands-command'>
-  <span><strong data-bind="text: command"></strong></span>&emsp;<button class="btn btn-default" data-bind="css: expandedClass, click: toggleExpanded"></button><button class="btn btn-default" data-bind="css: lockedClass, click: toggleLock, visible: expanded"></button><button class="btn btn-danger" data-bind="click: deleteSelf, attr: {disabled: locked}, visible: expanded">{{ _('-') }}</button>
+  <span><strong data-bind="text: command"></strong></span>&emsp;<button class="btn btn-default" data-bind="css: expandedClass, click: toggleExpanded"></button><button class="btn btn-default" data-bind="css: lockedClass, click: toggleLock, visible: expanded"></button><button class="btn btn-default fa fa-arrow-up" data-bind="click: moveSelfUp"></button><button class="btn btn-default fa fa-arrow-down" data-bind="click: moveSelfDown"></button><button class="btn btn-danger" data-bind="click: deleteSelf, attr: {disabled: locked}, visible: expanded">{{ _('-') }}</button>
 
 
   <ul data-bind="visible: expanded">
