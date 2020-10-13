@@ -1,6 +1,6 @@
 # OctoPrint-Usb_keyboard
 
-**TODO:** Describe what your plugin does.
+Enables users to use a USB keyboard to control their printer through Octoprint.
 
 ## Setup
 
@@ -9,9 +9,7 @@ or manually using this URL:
 
     https://github.com/barrettford/OctoPrint-Usb_keyboard/archive/master.zip
 
-**TODO:** Describe how to install your plugin, if more needs to be done than just installing it via pip or through
-the plugin manager.
 
 ## Configuration
 
-**TODO:** Describe your plugin's configuration options (if any).
+None. Configure plugin settings through the settings dialog.
