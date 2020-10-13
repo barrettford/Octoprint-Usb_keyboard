@@ -1,14 +1,38 @@
 <template id='template-sfr-keyboard'>
-  <span><strong>Keyboard</strong></span>&emsp;<button class="btn btn-default" data-bind="css: lockedClass, click: toggleLock"></button>&emsp;
-  <input type="number" style="width: 200px" data-bind="attr: {disabled: locked}, slider: {min: 2, max: 6, step: .5, value: keyboardScale, tooltip: 'hide'}">
+  <span><strong>Keyboard</strong></span>
+  &emsp;<button class="btn btn-default" data-bind="css: lockedClass, click: toggleLock"></button>
+  &emsp;<input type="number" style="width: 200px" data-bind="attr: {disabled: locked}, slider: {min: 2, max: 6, step: .5, value: keyboardScale, tooltip: 'hide'}" />
+  &emsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button>
+  
+  <div data-bind="visible: showingInfo">
+    <hr>
+    <p><b>Keyboard Configuration</b>&emsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></p>
+    <ul>
+      <li>
+        <button class="btn btn-default" data-bind="css: lockedClass"></button> locks/unlocks the textfields and buttons.
+      </li>
+      <li>
+        <input type="number" style="width: 70px" data-bind="slider: {min: 2, max: 6, step: .5, value: infoSlider, tooltip: 'hide'}" />&emsp;adjusts the keyboard scale.
+      </li>
+      <li>
+        First line of <button class="btn btn-primary">{{ _('+') }}</button><button class="btn btn-danger">{{ _('-') }}</button> add/remove, respectively, a row of keys.
+      </li>
+      <li>
+        Following lines of <button class="btn btn-primary">{{ _('+') }}</button><button class="btn btn-danger">{{ _('-') }}</button> add/remove, respectively, single keys from a row.
+      </li>
+      <li>
+        Press on a key to open the key configuration settings.
+      </li>
+    </ul>
+    <hr>
+  </div>
+  
   <table class="keyboardTable" cellspacing="0" cellpadding="0">
     <thead>
       <tr>
         <td><button class="btn btn-primary" data-bind="click: addRow, attr: {disabled: locked}">{{ _('+') }}</button></td>
         <td><button class="btn btn-danger" data-bind="click: deleteRow, attr: {disabled: locked}">{{ _('-') }}</button></td>
-        
         <!-- ko repeat: {count: spacerCount} -->
-        
         <td data-bind="attr: {width: spacerWidth()}"></td>
         <!-- /ko -->
       </tr>
@@ -16,39 +40,75 @@
     <tbody data-bind="foreach: keyboardRows">
       <!-- ko component: {
           name: "sfr-keyboard-row",
-          params: { keys: $data.keys, editingKey: $parent.editingKey, keyboardScale: $parent.keyboardScale, row: $index, profile: $parentContext.$data.profile, locked: $parentContext.$data.locked }
+          params: { keys: $data.keys, editingKey: $parent.editingKey, keyboardScale: $parent.keyboardScale, commands: $parent.commands, row: $index, profile: $parentContext.$data.profile, locked: $parentContext.$data.locked }
       } -->
       <!-- /ko -->
     </tbody>
   </table>
-  <table data-bind="with: editingKey">
-    <tr>
-      <td>Key:</td>
-      <td><input data-bind="textInput: key" /></td>
-      <td><button class="btn btn-default" data-bind="click: keyDiscovery">{{ _('Get Key') }}</button></td>
-      <td><button class="btn btn-danger" data-bind="click: clearKey, attr: {disabled: (key() == null)}">{{ _('Clear Key') }}</button></td>
-    </tr>
-    <tr>
-      <td>Optional Alias:</td>
-      <td><input data-bind="textInput: alias" /></td>
-      <td></td>
-      <td><button class="btn btn-danger" data-bind="click: clearAlias, attr: {disabled: (alias() == null)}">{{ _('Clear Alias') }}</button></td>
-    </tr>
-    <tr class="sliderCell">
-      <td>Width Scale:</td>
-      <td class="sliderCell"><input type="number" style="width: 100px" data-bind="attr: {disabled: locked}, slider: {min: 1, max: 7, step: 0.25, value: widthScale, tooltip: 'hide'}"></td>
-      <td data-bind="text: widthScale"></td>
-      <td data-bind="attr: {rowspan: 2}"><button class="btn btn-default" id="keyboardKey" data-bind="text: keyText, style: { width: calcWidth(), height: calcHeight(), opacity: key() == null ? 0.4 : 1.0 }"></button></td>
-    </tr>
-    <tr class="sliderCell">
-      <td>Height Scale:</td>
-      <td class="sliderCell"><input type="number" style="width: 100px" data-bind="attr: {disabled: locked}, slider: {min: 1, max: 2, step: 1, value: heightScale, tooltip: 'hide'}"></td>
-      <td data-bind="text: heightScale"></td>
-    </tr>
-    <tr>
-      <td><button class="btn btn-default" data-bind="click: clearEditingKey">{{ _('Close') }}</button></td>
-    </tr>
-  </table>
+
+  
+  <div data-bind="with: editingKey">
+    <div data-bind="visible: showingInfo">
+      <hr>
+      <p><b>Keyboard Key Configuration</b>&emsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></p>
+      <ul>
+        <li>
+          <input class="centered" placeholder="Enter key..."/> allows you to enter/edit the key that triggers this command.
+        </li>
+        <li>
+          <button class="btn btn-default">{{ _('Get Key') }}</button> assigns the next key pressed on the attached keyboard
+          to this key. (If on Linux, make sure you've already configured your input device)
+        </li>
+        <li>
+          <button class="btn btn-danger">{{ _('Clear Key') }}</button> clears the key field.
+        </li>
+        <li>
+          <input class="centered" placeholder="Optional alias..." /> allows you to enter/edit the key alias. Has no affect
+          on the key, it just makes it easier for you to organize your keyboard.
+        </li>
+        <li>
+          Width Scale&emsp;<input type="number" style="width: 50px" data-bind="slider: {min: 1, max: 3, step: 1, value: infoSlider, tooltip: 'hide'}"/>&emsp;controls width of the key.
+        </li>
+        <li>
+          Height Scale&emsp;<input type="number" style="width: 50px" data-bind="slider: {min: 1, max: 3, step: 1, value: infoSlider, tooltip: 'hide'}"/>&emsp;controls height of the key.
+        </li>
+        <li>
+          <button class="btn btn-primary">{{ _('Add/Reveal Command') }}</button> creates a new command listening for this key if it doesn't already exist.
+          It brings the command to the top of the list if it already exists.
+        </li>
+        <li>
+          <button class="btn btn-default">{{ _('Close') }}</button> closes key configuration.
+        </li>
+      </ul>
+      <p>While the keyboard and command list appear linked, they are not. Key configuration can create new commands, but once created the new command is not bound to the keyboard in any way. This is by design and prevents accidental deletion of commands due to messing with the keyboard. The keyboard is simply a representation you create (nominally, one that looks like your physical keyboard device) to aid in configuring commands.</p>
+      <hr>
+    </div>
+    
+    <table>
+      <tr>
+        <td>Key:</td>
+        <td><input class="centered" placeholder="Enter key..." data-bind="textInput: key" /></td>
+        <td><button class="btn btn-default" data-bind="click: keyDiscovery">{{ _('Get Key') }}</button></td>
+        <td><button class="btn btn-danger" data-bind="click: clearKey, attr: {disabled: (key() == null)}">{{ _('Clear Key') }}</button></td>
+        <td><button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></td>
+      </tr>
+      <tr>
+        <td>Optional Alias:</td>
+        <td><input class="centered" placeholder="Optional alias..." data-bind="textInput: alias" /></td>
+      </tr>
+    </table>
+    <dl>
+      <dt>Width Scale:</dt>
+      <dl>&emsp;<input type="number" style="width: 100px" data-bind="attr: {disabled: locked}, slider: {min: 1, max: 7, step: 0.25, value: widthScale, tooltip: 'hide'}"/>&emsp;<span data-bind="text: widthScale"></span>
+      <dt>Height Scale:</dt>
+      <dl>&emsp;<input type="number" style="width: 100px" data-bind="attr: {disabled: locked}, slider: {min: 1, max: 2, step: 1, value: heightScale, tooltip: 'hide'}"/>&emsp;<span data-bind="text: widthScale"></span>
+    </dl>
+    <br>
+    <button class="btn btn-primary" data-bind="click: addCommand">{{ _('Add/Reveal Command') }}</button>
+    &nbsp;<button class="btn btn-default" data-bind="click: clearEditingKey">{{ _('Close') }}</button>
+    &emsp;<button class="btn btn-default" class="floatRight" id="keyboardKey" data-bind="text: keyText, style: { width: calcWidth(), height: calcHeight(), opacity: key() == null ? 0.4 : 1.0 }"></button>
+    
+  </div>
 </template>
 
 <template id="template-sfr-keyboard-row">
@@ -63,7 +123,7 @@
       <!-- ko foreach: keys -->
       <!-- ko component: {
           name: "sfr-keyboard-row-key",
-          params: { keyData: $data, editingKey: $parent.editingKey, keyboardScale: $parent.keyboardScale, root: $root, column: $index, row: $parent.row, profile: $parent.profile, locked: $parentContext.$data.locked }
+          params: { keyData: $data, editingKey: $parent.editingKey, keyboardScale: $parent.keyboardScale,  root: $root, commands: $parent.commands, column: $index, row: $parent.row, profile: $parent.profile, locked: $parentContext.$data.locked }
       } -->
       <!-- /ko -->
       <!-- /ko -->

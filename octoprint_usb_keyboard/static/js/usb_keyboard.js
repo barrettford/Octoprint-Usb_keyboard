@@ -11,6 +11,7 @@ $(function() {
   function Usb_keyboardViewModel(parameters) {
     var self = this;
     Expandable.call(self, "settings", ko.observable(true))
+    ShowsInfo.call(self)
     
     // var KEY_DISCOVERY_LIST = []
     
@@ -75,7 +76,6 @@ $(function() {
       
       self.toggleLock = function() {
         self.locked(!self.locked());
-        // console.log("Toggling " + description + " lock to " + (self.locked() ? 'locked' : 'unlocked'))
       }
       
       self.lockedClass = ko.pureComputed(function() {
@@ -145,8 +145,10 @@ $(function() {
         self.key(value)
       }
       
-      
-      self.keyDiscovery = function(model) {
+      self.keyDiscovery = function(data, event) {
+        
+        console.log("data", data)
+        console.log("event", event)
         
         // self.root.currentKey(null)
         // self.editingKey(true)
@@ -166,13 +168,38 @@ $(function() {
         // console.log("self.settings() ", self.settingsViewModel.settings.plugins.usb_keyboard.key_discovery)
       };
     }
-    function NonDuplicateAdd(targetArray, sendingKey) {
+    function ShowsInfo() {
+      var self = this
       
+      self.hovering = ko.observable(false)
+      self.clicked = ko.observable(false)
+      self.infoSlider = ko.observable() // Not used for anything, just lets sliders bind to something.
+      
+      self.showingInfo = ko.pureComputed(function() {
+        return self.hovering() || self.clicked();
+      });
+      
+      self.showInfo = function() {
+        self.hovering(true);
+      }
+      
+      self.hideInfo = function() {
+        self.hovering(false);
+      }
+      
+      self.toggleInfo = function() {
+        self.clicked(!self.clicked());
+      }
+      
+      self.infoClass = ko.pureComputed(function() {
+        return self.showingInfo() ? 'btn-warning' : 'btn-info';
+      });
     }
     
     function KeyboardViewModel(params) {
       var self = this;
       Lockable.call(self, "keyboard")
+      ShowsInfo.call(self)
       
       // console.log("Keyboard View Model raw", params)
       // console.log("Keyboard View Model self", self)
@@ -180,6 +207,7 @@ $(function() {
       self.keyboardRows = params.keyboard.board;
       self.editingKey = ko.observable(null);
       self.keyboardScale = params.keyboard.scale;
+      self.commands = params.commands;
       self.profile = params.profile;
       
       self.spacerCount = ko.pureComputed(function() {
@@ -205,6 +233,9 @@ $(function() {
       self.spacerWidth = ko.pureComputed(function() {
         return (self.keyboardScale() * 15)/4;
       });
+      
+      
+
       
       // self.keyboardScaleValue = ko.computed({
 //           read: function() {
@@ -242,10 +273,12 @@ $(function() {
       
       self.keys = params.keys
       self.editingKey = params.editingKey;
+      self.commands = params.commands;
       self.profile = params.profile
       self.row = params.row
       self.keyboardScale = params.keyboardScale
       self.locked = params.locked
+      
       
       self.addKey = function() {
         console.log("Clicked + key");
@@ -268,6 +301,7 @@ $(function() {
     function KeyboardRowKeyViewModel(params) {
       var self = this
       KeyDiscoverable.call(self, params.keyData.key, params.root)
+      ShowsInfo.call(self)
       
       // console.log("Keyboard Row Key View Model raw", params)
       // console.log("Keyboard Row Key View Model self", self)
@@ -277,7 +311,7 @@ $(function() {
       self.heightScale = params.keyData.h
       self.alias = params.keyData.alias
       self.editingKey = params.editingKey
-      
+      self.commands = params.commands
       
       self.profile = params.profile
       self.row = params.row
@@ -295,17 +329,13 @@ $(function() {
       });
       
       self.keyText = ko.pureComputed(function() {
-        return (self.alias() == null ? self.key() : self.alias())
+        return ((self.alias() == null || self.alias() === "") ? self.key() : self.alias())
       });
       
       self.clearKey = function() {
         self.setKey(null)
         self.widthScale(1)
         self.heightScale(1)
-      }
-      
-      self.clearAlias = function() {
-        self.alias(null)
       }
       
       self.calcWidth = ko.pureComputed(function() {
@@ -333,6 +363,35 @@ $(function() {
         self.editingKey(null)
         // $('#SingleKeyModal').modal('show');
       };
+      
+      self.addCommand = function() {
+        var newCommand = self.editingKey()
+        var dupeCommand = null;
+        
+        self.commands().some(function(value) {
+          if (value.key() == newCommand.key()) {
+            dupeCommand = value;
+            return true;
+          }
+        });
+        
+        if (dupeCommand != null) {
+          dupeCommand.alias(self.alias());
+          self.commands.remove(dupeCommand);
+          self.commands.unshift(dupeCommand);
+        }
+        else {
+          self.commands.unshift(
+            ko.mapping.fromJS(
+              {
+                "key":newCommand.key,
+                "alias":newCommand.alias,
+                "value":{"pressed":[], "released":[], "variables":[]}
+              }
+            )
+          );
+        }
+      }
     }
     ko.components.register('sfr-keyboard-row-key', {
       viewModel: KeyboardRowKeyViewModel,
@@ -343,6 +402,7 @@ $(function() {
     function VariablesViewModel(params) {
       var self = this
       Lockable.call(self, "variables", params.locked)
+      ShowsInfo.call(self)
 
       // console.log("VariablesViewModel raw", params)
       // console.log("VariablesViewModel self", self)
@@ -382,6 +442,8 @@ $(function() {
     
     function CommandsViewModel(params) {
       var self = this
+      ShowsInfo.call(self)
+      
       // Lockable.call(self, "commands")
       //
       // console.log("CommandsViewModel raw", params)
@@ -390,6 +452,35 @@ $(function() {
       self.commands = params.commands
       self.profile = params.profile
       self.allowedVariables = params.allowedVariables
+      
+      self.createCommand = function() {
+        var newCommand = "NEW COMMAND"
+        var dupeCommand = null;
+        
+        self.commands().some(function(value) {
+          if (value.key() == newCommand) {
+            dupeCommand = value;
+            return true;
+          }
+        });
+        
+        if (dupeCommand != null) {
+          self.commands.remove(dupeCommand);
+          self.commands.unshift(dupeCommand);
+        }
+        else {
+          self.commands.unshift(
+            ko.mapping.fromJS(
+              {
+                "key":newCommand,
+                "alias":null,
+                "value":{"pressed":[], "released":[], "variables":[]}
+              }
+            )
+          );
+        }
+      }
+      
     }
     ko.components.register('sfr-commands', {
       viewModel: CommandsViewModel,
@@ -402,6 +493,8 @@ $(function() {
       Lockable.call(self, "commands")
       Expandable.call(self, "commands")
       SelfManaged.call(self, params.parentArray, params.commandObject)
+      KeyDiscoverable.call(self, params.commandObject.key, params.root)
+      ShowsInfo.call(self)
       
 
       // console.log("CommandsCommandViewModel raw", params)
@@ -409,11 +502,19 @@ $(function() {
       
       self.profile = params.profile
       self.command = params.commandObject.key
+      self.alias = params.commandObject.alias
       self.pressed = params.commandObject.value.pressed
       self.released = params.commandObject.value.released
       self.variables = params.commandObject.value.variables
       self.allowedVariables = params.allowedVariables
       self.allowedCommandActions = ["printer", "plugin_psucontrol", "save_vars", "listen_vars"]
+      
+      self.commandText = ko.pureComputed(function() {
+        if (self.alias() == null || self.alias === "") {
+          return self.command();
+        }
+        return self.alias() + " '" + self.command() + "'";
+      });
       
       self.newCommandAction = ko.observable()
       
@@ -438,8 +539,10 @@ $(function() {
         } 
         
         list.push(ko.mapping.fromJS(newCommandActionMap))
-        
-        
+      }
+      
+      self.clearKey = function() {
+        self.setKey(null)
       }
     }
     ko.components.register('sfr-commands-command', {
@@ -452,7 +555,7 @@ $(function() {
       var self = this
       Lockable.call(self, "action", params.locked)
       SelfManaged.call(self, params.parentArray, params.commandActionObject)
-
+      ShowsInfo.call(self)
       // console.log("CommandsCommandPrinterViewModel raw", params)
       // console.log("CommandsCommandPrinterViewModel self", self)
       
@@ -460,6 +563,14 @@ $(function() {
       self.type = params.commandActionObject.type;
       self.gcode = params.commandActionObject.gcode;
       self.sendWhilePrinting = params.commandActionObject.send_while_printing;
+      
+      self.toggleSendWhilePrinting = function() {
+        self.sendWhilePrinting(!self.sendWhilePrinting());
+      }
+      
+      self.sendWhilePrintingClass = ko.pureComputed(function() {
+        return self.sendWhilePrinting() ? 'btn-success fa-check' : 'fa-times' ;
+      });
       
       // this will be called when the user clicks the "+ Row" button and add a new row of data
       self.addLine = function() {
@@ -485,7 +596,7 @@ $(function() {
       var self = this
       Lockable.call(self, "action", params.locked)
       SelfManaged.call(self, params.parentArray, params.commandActionObject)
-      
+      ShowsInfo.call(self)
       //
       // console.log("CommandsCommandListenSaveVarsViewModel raw", params)
       // console.log("CommandsCommandListenSaveVarsViewModel self", self)
@@ -504,7 +615,8 @@ $(function() {
     function CommandsCommandVariablesViewModel(params) {
       var self = this
       Lockable.call(self, "action", params.locked)
-      //
+      ShowsInfo.call(self)
+      
       // console.log("CommandsCommandVariablesViewModel raw", params)
       // console.log("CommandsCommandVariablesViewModel self", self)
       
@@ -550,6 +662,7 @@ $(function() {
       var self = this
       Lockable.call(self, "action", params.locked)
       SelfManaged.call(self, params.parentArray, params.commandActionObject)
+      ShowsInfo.call(self)
       
 
       // console.log("CommandsCommandPluginPsucontrolViewModel raw", params)
@@ -570,6 +683,7 @@ $(function() {
     function ProfileViewModel(params) {
       var self = this
       Lockable.call(self, "profile")
+      ShowsInfo.call(self)
             //
       // console.log("ProfileViewModel raw", params)
       // console.log("ProfileViewModel self", self)
@@ -577,6 +691,7 @@ $(function() {
       // self.variables = ko.observable(params.variables)
       self.activeProfileName = params.activeProfileName
       self.profile = params.profileObject.key
+      self.description = params.profileObject.value.description
       self.profileNames = params.profileNames
       self.profileObject = params.profileObject
       self.profileArray = params.profileArray
@@ -647,10 +762,15 @@ $(function() {
       
       if (! dupeDetected) {
         var newProfile = ko.mapping.fromJS({"key":newProfileName,
-        "value":{ "commands":[],
+        "value":{ "description":null,
+                  "commands":[],
                   "keyboard":{
                     "scale": 3,
-                    "board": [{"key":null, "alias":null, "w":1, "h":1}]
+                    "board": [
+                      {"keys":[
+                        {"key":null, "alias":null, "w":1, "h":1}
+                      ]}
+                    ]
                   },
                   "variables":[]
                 }});

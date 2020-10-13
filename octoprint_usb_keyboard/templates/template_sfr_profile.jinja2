@@ -4,23 +4,55 @@
 
 
 <template id='template-sfr-profile'>
-  <span><strong>Profile</strong></span>&emsp;<button class="btn btn-default" data-bind="css: lockedClass, click: toggleLock"></button>
+  <span><strong>Profile</strong></span>
+  &emsp;<button class="btn btn-default" data-bind="css: lockedClass, click: toggleLock"></button>
+  &nbsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button>
+  <div data-bind="visible: showingInfo">
+    <hr>
+    <p><b>Profile Management</b>&emsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></p>
+    <ul>
+      <li>
+        <button class="btn btn-default" data-bind="css: lockedClass"></button> locks/unlocks the textfields and buttons.
+      </li>
+      <li>
+        <input placeholder="Enter name..." /> lets you type a new name for the current profile.
+      </li>
+      <li>
+        <button class="btn btn-default fa fa-pencil"></button> actually assigns the name you put in the <input placeholder="Enter name..." /> textbox.
+        >Duplicate profile names are not allowed and you'll get an error if you try.
+      </li>
+      <li>
+        <button class="btn btn-default fa fa-files-o"></button> duplicates the current profile and sets it as your currently active profile.
+        A great way to back things up before experimenting.
+      </li>
+      <li>
+        <button class="btn btn-danger">{{ _('-') }}</button> deletes the current profile. Poof. Gone.
+      </li>
+      <li>
+        <textarea placeholder="Enter a description here..." style="resize: none" rows="1" cols="20"></textarea> lets you type up a description of your profile.
+        Helps you remember what it is for and what it can do. 2000 characters max.
+      </li>
+    </ul>
+    <p>Each profile is made up of three sections: <b>Keyboard</b>, <b>Commands</b>, and <b>Variables</b>.</p>
+    <hr>
+  </div>
+  
   <table>
     <tr>
-      <td><input data-bind="textInput: newProfileName, attr: {disabled: locked}"/></td>
+      <td><input placeholder="Enter name..." data-bind="textInput: newProfileName, attr: {disabled: locked}"/></td>
       <td><button class="btn btn-default fa fa-pencil" data-bind="click: editProfileName, attr: {disabled: locked}"></button></td>
       <td><button class="btn btn-default fa fa-files-o" data-bind="click: duplicateProfile, attr: {disabled: locked}"></button></td>
       <td><button class="btn btn-danger" data-bind="click: deleteProfile, attr: {disabled: locked}">{{ _('-') }}</button></td>
     </tr>
-    <!-- <tr>
-      <td data-bind="visible: dupeDetected"><span><strong>*** Duplicate profile name detected! ***</strong></span></td>
-    <tr> -->
   </table>
+  <textarea class="profileDescription" placeholder="Enter a description here..." maxlength=2000 data-bind="textInput: description, attr: {disabled: locked, rows: description() == null ? 1 : Math.ceil(description().length / 70) }"></textarea>
+  <br>
 
-  <sfr-keyboard params='keyboard: keyboard, profile: profile'></sfr-keyboard>
+  <hr>
+  <sfr-keyboard params='keyboard: keyboard, commands: commands, profile: profile'></sfr-keyboard>
+  <hr>
   <sfr-commands params='commands: commands, profile: profile, allowedVariables: allowedVariables'></sfr-commands>
+  <hr>
   <sfr-variables params='variables: variables, profile: profile'></sfr-variables>
   
 </template>
-
-

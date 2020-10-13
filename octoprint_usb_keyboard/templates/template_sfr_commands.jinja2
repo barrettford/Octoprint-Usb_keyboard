@@ -1,12 +1,25 @@
 <template id='template-sfr-commands'>
-  <span><strong>Commands</strong></span><!-- <button data-bind="css: lockedClass, click: toggleLock"></button> -->
+  <span><strong>Commands</strong></span>
+  &emsp;<button class="btn btn-primary" data-bind="click: createCommand">{{ _('+') }}</button>
+  &nbsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button>
+  <div data-bind="visible: showingInfo">
+    <hr>
+    <p><b>Commands List</b>&emsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></p>
+    <ul>
+      <li>
+        <button class="btn btn-primary">{{ _('+') }}</button> creates a new command. New commands can
+        also be created from the keyboard above.
+      </li>
+    </ul>
+    <hr>
+  </div>
 
-  <table>
+  <table class="commandTable">
     <tbody>
       <!-- ko foreach: commands -->
       <tr>
         <td>
-          <sfr-commands-command params='commandObject: $data, parentArray: $parent.commands, allowedVariables: $parent.allowedVariables, profile: $parent.profile, locked: $parent.locked'></sfr-commands-command>
+          <sfr-commands-command params='commandObject: $data, parentArray: $parent.commands, allowedVariables: $parent.allowedVariables, profile: $parent.profile, locked: $parent.locked, root: $root'></sfr-commands-command>
         </td>
       </tr>
       <!-- /ko -->
@@ -22,10 +35,98 @@
 
 
 <template id='template-sfr-commands-command'>
-  <span><strong data-bind="text: command"></strong></span>&emsp;<button class="btn btn-default" data-bind="css: expandedClass, click: toggleExpanded"></button><button class="btn btn-default" data-bind="css: lockedClass, click: toggleLock, visible: expanded"></button><button class="btn btn-default fa fa-arrow-up" data-bind="click: moveSelfUp"></button><button class="btn btn-default fa fa-arrow-down" data-bind="click: moveSelfDown"></button><button class="btn btn-danger" data-bind="click: deleteSelf, attr: {disabled: locked}, visible: expanded">{{ _('-') }}</button>
-
+  <button class="btn btn-default" data-bind="css: expandedClass, click: toggleExpanded"></button>
+  &nbsp;<button class="btn btn-default" data-bind="css: lockedClass, click: toggleLock, visible: expanded"></button>
+  &nbsp;<button class="btn btn-default fa fa-arrow-up" data-bind="click: moveSelfUp"></button>
+  &nbsp;<button class="btn btn-default fa fa-arrow-down" data-bind="click: moveSelfDown"></button>
+  &nbsp;<button class="btn btn-danger" data-bind="click: deleteSelf, attr: {disabled: locked}, visible: expanded">{{ _('-') }}</button>
+  &nbsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo, visible: expanded"></button>
+  &emsp;<span><strong data-bind="text: commandText()"></strong></span>
+  
+  <div data-bind="visible: showingInfo">
+    <hr>
+    <p><b>Command Keys and Configuration</b>&emsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></p>
+    <ul>
+      <li>
+        <button class="btn btn-default" data-bind="css: expandedClass"></button> expands/contracts the command configuration fields.
+        Helps you stay focused on one command at a time.
+      </li>
+      <li>
+        <button class="btn btn-default" data-bind="css: lockedClass"></button> locks/unlocks textfields and buttons.
+      </li>
+      <li>
+        <button class="btn btn-default fa fa-arrow-up"></button><button class="btn btn-default fa fa-arrow-down"></button> Moves command up/down respectively in the list.
+        Purely organizational.
+      </li>
+      <li>
+        <button class="btn btn-danger">{{ _('-') }}</button> deletes this command. Poof. Gone.
+      </li>
+      <li>
+        <input class="centered" placeholder="Enter key..."/> allows you to enter/edit the key that triggers this command.
+      </li>
+      <li>
+        <button class="btn btn-default">{{ _('Get Key') }}</button> assigns the next key pressed on the attached keyboard
+        to this command. (If on linux, make sure you've already configured your input device)
+      </li>
+      <li>
+        <button class="btn btn-danger">{{ _('Clear Key') }}</button> clears the key field.
+      </li>
+      <li>
+        <input class="centered" placeholder="Optional alias..." /> allows you to enter/edit the key alias. Has no affect
+        on the command, it just makes it easier for you to organize your commands.
+      </li>
+    </ul>
+    <p>Each command has three additional sections: <b>Pressed</b>, <b>Released</b>, and <b>Variables</b></p>
+    <ul>
+      <li>
+        <b>Pressed</b> section lists the commands that will be run whenever the key
+        represented in <input class="centered" placeholder="Enter key..."/> is pressed.
+        Commands are run in order, starting at 1.
+          <ul>
+            <li>
+              <select data-bind="options: allowedCommandActions"></select> lets you select one of the valid command types.
+            </li>
+            <li>
+              <button class="btn btn-primary">{{ _('+') }}</button> adds a new command of the selected type.
+            </li>
+          </ul>
+        </li>
+        <li>
+          <b>Released</b> section lists the commands that will be run whenever the key
+          represented in <input class="centered" placeholder="Enter key..."/> is released.
+          Commands are run in order, starting at 1.
+          <ul>
+            <li>
+              <select data-bind="options: allowedCommandActions"></select> lets you select one of the valid command types.
+            </li>
+            <li>
+              <button class="btn btn-primary">{{ _('+') }}</button> adds a new command of the selected type.
+            </li>
+          </ul>
+      </li>
+      <li>
+        The <b>Variables</b> section lists the settable variables defined in the <b>Profile</b>><b>Variables</b> section.
+      </li>
+    </ul>
+    <hr>
+  </div>
 
   <ul data-bind="visible: expanded">
+    <li>
+      <table>
+        <tr>
+          <td>Key:</td>
+          <td><input class="centered" placeholder="Enter key..." data-bind="textInput: key, attr: {disabled: locked}" /></td>
+          <td><button class="btn btn-default" data-bind="click: keyDiscovery, attr: {disabled: locked}">{{ _('Get Key') }}</button></td>
+          <td><button class="btn btn-danger" data-bind="click: clearKey, attr: {disabled: (key() == null || locked)}">{{ _('Clear Key') }}</button></td>
+        </tr>
+        <tr>
+          <td>Optional Alias:</td>
+          <td><input class="centered" placeholder="Optional alias..." data-bind="textInput: alias, attr: {disabled: locked}" /></td>
+        </tr>
+      </table>
+    </li>
+    
     <li><strong>Pressed</strong>&emsp;<select data-bind="options: allowedCommandActions, value: newCommandAction, attr: {disabled: locked}"></select><button class="btn btn-primary" data-bind="click: createCommandAction.bind($data, pressed), attr: {disabled: locked}">{{ _('+') }}</button>
       <ol>
       <!-- ko foreach: pressed -->
@@ -41,6 +142,7 @@
       <!-- /ko -->
       </ol>
     </li>
+    <hr>
     <li>
       <strong>Released</strong>&emsp;<select data-bind="options: allowedCommandActions, value: newCommandAction, attr: {disabled: locked}"></select><button class="btn btn-primary" data-bind="click: createCommandAction.bind($data, released), attr: {disabled: locked}">{{ _('+') }}</button>
       <ol>
@@ -57,11 +159,11 @@
       <!-- /ko -->
       </ol>
     </li>
+    <hr>
     <li>
       <sfr-commands-command-variables params='variables: variables, allowedVariables: allowedVariables, profile: profile, locked: locked'></sfr-commands-command-variables>
     </li>
     <hr>
-    
   </ul>
 
     
@@ -69,14 +171,36 @@
 
 
 <template id='template-sfr-commands-command-variables'>
+  <span><strong>Variables:</strong></span>
+  &nbsp;<span data-bind="ifnot: lockProvided"><button class="btn btn-default" data-bind="css: lockedClass, click: toggleLock"></button></span>
+  &nbsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button>
+  
+  <div data-bind="visible: showingInfo">
+    <p><b>Variable Assignment Configuration</b>&emsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></p>
+    <ul>
+      <li>
+        <select data-bind="options: localAllowedVariables"></select> contains the list of availble variables.
+        These variables are defined in the <b>Profile</b>><b>Variables</b> section.
+      </li>
+      <li>
+        <input placeholder="Enter value..." data-bind="textInput: newVariableValue"/> allows you to enter the variable value.
+      </li>
+      <li>
+         <button class="btn btn-primary">{{ _('+') }}</button> adds the variable to the list below.
+      </li>
+      <li>
+        <button class="btn btn-danger">{{ _('-') }}</button> deletes the preceeding variable/value.
+      </li>
+    </ul>
+    <p>Values defined here can be assigned to their associated variable during the 'listen_vars', press key, 'save_vars' command flow.
+  </div>
   <dl>
-    <dt><span><strong>Variable values to set:</strong></span><span data-bind="ifnot: lockProvided"><button class="btn btn-default" data-bind="css: lockedClass, click: toggleLock"></button></span></dt>
     <dd>
       <table data-bind="hidden: lockProvided">
         <tbody data-bind="if: localAllowedVariables().length > 0">
           <tr>
             <td><select data-bind="options: localAllowedVariables, value: newVariableKey, attr: {disabled: locked}"></select></td>
-            <td><input data-bind="textInput: newVariableValue, attr: {disabled: locked}" /></td>
+            <td><input placeholder="Enter value..." data-bind="textInput: newVariableValue, attr: {disabled: locked}" /></td>
             <td>
               <button class="btn btn-primary" data-bind="click: addVariable, attr: {disabled: locked}">{{ _('+') }}</button>
             </td>
@@ -99,98 +223,160 @@
 
 
 <template id='template-sfr-commands-command-printer'>
-  <table>
-    <tbody>
-      <tr>
-        <td><strong>Command Type:</strong></td>
-        <td data-bind="text: type"></td>
-        <td>
-          <button class="btn btn-default fa fa-arrow-up" data-bind="click: moveSelfUp, attr: {disabled: locked}"></button>
-          <button class="btn btn-default fa fa-arrow-down" data-bind="click: moveSelfDown, attr: {disabled: locked}"></button>
-          <button class="btn btn-danger" data-bind="click: deleteSelf, attr: {disabled: locked}">{{ _('-') }}</button>
-        </td>
-      </tr>
-      <tr>
-        <td>
-          Send while printing:
-        </td>
-        <td>
-          <input type="checkbox" data-bind="checked: sendWhilePrinting, attr: {disabled: locked}"/>
-        </td>
-      </tr>
-      <tr>
-        <td>
-          Gcode to run:
-        </td>
-        <td>
-          <table>
-            <tbody>
-            <!-- ko foreach: gcode -->
-            <tr>
-              <td><input class="gcodeLine" data-bind="textInput: $data, attr: {disabled: $parent.locked}"/></td>
-              <td><button class="btn btn-danger" data-bind="click: $parent.deleteLine, attr: {disabled: $parent.locked}">{{ _('-') }}</button></td>
-            </tr>
-            <!-- /ko -->
-            <tr>
-              <td></td>
-              <td><button class="btn btn-primary" data-bind="click: addLine, attr: {disabled: locked}">{{ _('+') }}</button></td>
-            </tr>
-          </tbody>
-          </table>
-        </td>
-      </tr>
-    </tbody>
-  </table>
+  <strong>Command Type:</strong>
+  &emsp;<span data-bind="text: type"></span>
+  &emsp;<button class="btn btn-default fa fa-arrow-up" data-bind="click: moveSelfUp, attr: {disabled: locked}"></button>
+  &nbsp;<button class="btn btn-default fa fa-arrow-down" data-bind="click: moveSelfDown, attr: {disabled: locked}"></button>
+  &nbsp;<button class="btn btn-danger" data-bind="click: deleteSelf, attr: {disabled: locked}">{{ _('-') }}</button>
+  &nbsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button>
+  
+  <div data-bind="visible: showingInfo">
+    <hr>
+    <p><b>Printer Command Configuration</b>&emsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></p>
+    <ul>
+      <li>
+        <button class="btn btn-default fa fa-arrow-up"></button><button class="btn btn-default fa fa-arrow-down"></button>
+        moves this command up/down, respectively, in the command execution order.
+      </li>
+      <li>
+        <button class="btn btn-danger">{{ _('-') }}</button> deletes this command. Poof. Gone.
+      </li>
+      <li>
+         Send while printing: <button class="btn fa" data-bind="css: sendWhilePrintingClass"></button>
+         <ul>
+           <li>
+             Checked - gcode will always be sent to printer.
+           </li>
+           <li>
+             Unchecked - gcode will <b>NOT</b> be sent to printer while the printer is printing or paused.
+           </li>
+         </ul>
+      </li>
+      <li>
+        Gcode to run:
+        <ul>
+          <li>
+            <input placeholder="Enter gcode..."/> Enter gcode commands here. One command per line, they will run in order.
+            <ul>
+              <li>
+                <b>Using variables:</b> Include &lt;foo&gt; and the current value of variable 'foo' will replace it.
+                For example, I have a variable 'hotend' with a value of 200. I could create the command
+                'M104 S&lt;hotend&gt;' and the current value of variable 'hotend' will replace it, resulting in
+                'M104 S200' being sent to the printer.
+              </li>
+            </ul>
+          </li>
+          <li>
+            <button class="btn btn-danger">{{ _('-') }}</button> deletes the preceeding line.
+          </li>
+          <li>
+            <button class="btn btn-primary">{{ _('+') }}</button> adds a new line.
+          </li>
+        </ul>
+      </li>
+    </ul>
+    <hr>
+  </div>
+  
+  <br>
+  Send while printing: <button class="btn fa" data-bind="css: sendWhilePrintingClass, click: toggleSendWhilePrinting, attr: {disabled: locked}"></button>
+  <br>
+  Gcode to run:
+  <ol>
+    <!-- ko foreach: gcode -->
+    <li>
+      <input placeholder="Enter gcode..." class="gcodeLine" data-bind="textInput: $data, attr: {disabled: $parent.locked}"/>
+      <button class="btn btn-danger" data-bind="click: $parent.deleteLine, attr: {disabled: $parent.locked}">{{ _('-') }}</button>
+    </li>
+    <!-- /ko -->
+  </ol>
+  <button class="btn btn-primary" data-bind="click: addLine, attr: {disabled: locked}">{{ _('+') }}</button>  
+  
 </template>
 
 <template id='template-sfr-commands-command-listen-save-vars'>
-  <table>
-    <tbody>
-      <tr>
-        <td><strong>Command Type:</strong></td>
-        <td data-bind="text: type"></td>
-        <td>
-          <button class="btn btn-default fa fa-arrow-up" data-bind="click: moveSelfUp, attr: {disabled: locked}"></button>
-          <button class="btn btn-default fa fa-arrow-down" data-bind="click: moveSelfDown, attr: {disabled: locked}"></button>
-          <button class="btn btn-danger" data-bind="click: deleteSelf, attr: {disabled: locked}">{{ _('-') }}</button>
-        </td>
-      </tr>
-      <tr>
-        <td>
-          Select one or more variables:
-        </td>
-        <td>
-          <select data-bind="options: allowedVariables(), selectedOptions: variables, attr: {disabled: locked, size: allowedVariables().length}" multiple="true"></select>
-        </td>
-      </tr>
-    </tbody>
-  </table>
+  <strong>Command Type:</strong>
+  &emsp;<span data-bind="text: type"></span>
+  &emsp;<button class="btn btn-default fa fa-arrow-up" data-bind="click: moveSelfUp, attr: {disabled: locked}"></button>
+  &nbsp;<button class="btn btn-default fa fa-arrow-down" data-bind="click: moveSelfDown, attr: {disabled: locked}"></button>
+  &nbsp;<button class="btn btn-danger" data-bind="click: deleteSelf, attr: {disabled: locked}">{{ _('-') }}</button>
+  &nbsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button>
+  
+  <div data-bind="visible: showingInfo">
+    <hr>
+    <p><b>Variable Management Command Configuration</b>&emsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></p>
+    <ul>
+      <li>
+        <button class="btn btn-default fa fa-arrow-up"></button><button class="btn btn-default fa fa-arrow-down"></button> moves this command up/down, respectively,
+        in the command execution order.
+      </li>
+      <li>
+        <button class="btn btn-danger">{{ _('-') }}</button> deletes this command. Poof. Gone.
+      </li>
+      <!-- ko if: type() === 'save_vars' -->
+      <li>
+        Select one or more variables: <select data-bind="options: allowedVariables(), attr: {size: allowedVariables().length}" multiple="true"></select>
+        lets you select one or more variables to save. Saving a variable captures the last modification for that variable and stores it for later substitution in gcode.
+      </li>
+      <!-- /ko -->
+      <!-- ko if: type() === 'listen_vars' -->
+      <li>
+        Select one or more variables: <select data-bind="options: allowedVariables(), attr: {size: allowedVariables().length}" multiple="true"></select>
+        lets you select one or more variables to begin listening for. Variables being listened for are staged to update their value until a closing 'save_vars' command for
+        that variable is encountered. This simply listens for values, the actual value is not set until a 'save_vars' command targetting this variable is encountered!
+      </li>
+      <li>
+        COMMANDS WILL NOT RUN while a 'listen_vars' command is active. No commands will execute except for a closing 'save_vars' command. That means you can use your entire
+        keyboard for commands, and then use the entire keyboard again for variable values! This saves keys and is actually quite intuitive.<br>
+        The 'Example 10Key' profiles illustrate this well. The . key, when pressed, starts a 'listen_vars'. While the key is held, pressing the 0,1,2,3 keys will result in
+        setting the distance variable to 0.1, 1, 10, 100. The bed and hotend variables are set in a similar manner, with the 4,5,6 and 7,8,9 keys, respectively. Once . is
+        released, it will trigger a 'save_vars', and whatever values grabbed will be set to those variables for use in future 'printer' commands.
+      </li>
+      <!-- /ko -->
+    </ul>
+    <p>The variables here are created and given default values in the <b>Profile</b>></b>Variables</b> section.</p>
+    <hr>
+  </div>
+  
+  <br>
+  Select one or more variables: <select data-bind="options: allowedVariables(), selectedOptions: variables, attr: {disabled: locked, size: allowedVariables().length}" multiple="true"></select>
+  
+  
 </template>
 
 <template id='template-sfr-commands-command-plugin-psucontrol'>
-  <table>
-    <tbody>
-      <tr>
-        <td><strong>Command Type:</strong></td>
-        <td data-bind="text: type"></td>
-        <td>
-          <button class="btn btn-default fa fa-arrow-up" data-bind="click: moveSelfUp, attr: {disabled: locked}"></button>
-          <button class="btn btn-default fa fa-arrow-down" data-bind="click: moveSelfDown, attr: {disabled: locked}"></button>
-          <button class="btn btn-danger" data-bind="click: deleteSelf, attr: {disabled: locked}">{{ _('-') }}</button>
-        </td>
-      </tr>
-      <tr>
-        <td>Prevent PSU shutdown if a hotend is hotter than</td>
-        <td><input class="temperature" data-bind="textInput: hotendMax, attr: {disabled: locked}" maxlength="3" size="3"/>˚C</td>
-      </tr>
-      <tr>
-        <td>
-          PSU Command:
-        </td>
-        <td>
-          <select data-bind="options: supportedCommands, value: command, attr: {disabled: locked}"></select>
-        </td>
-      </tr>
-    </tbody>
-  </table>
+  <strong>Command Type:</strong>
+  &emsp;<span data-bind="text: type"></span>
+  &emsp;<button class="btn btn-default fa fa-arrow-up" data-bind="click: moveSelfUp, attr: {disabled: locked}"></button>
+  &nbsp;<button class="btn btn-default fa fa-arrow-down" data-bind="click: moveSelfDown, attr: {disabled: locked}"></button>
+  &nbsp;<button class="btn btn-danger" data-bind="click: deleteSelf, attr: {disabled: locked}">{{ _('-') }}</button>
+  &nbsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button>
+  
+  <div data-bind="visible: showingInfo">
+    <hr>
+    <p><b>PSU Control Command Configuration</b>&emsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></p>
+    <ul>
+      <li>
+        <button class="btn btn-default fa fa-arrow-up"></button><button class="btn btn-default fa fa-arrow-down"></button> moves this command up/down, respectively,
+        in the command execution order.
+      </li>
+      <li>
+        <button class="btn btn-danger">{{ _('-') }}</button> deletes this command. Poof. Gone.
+      </li>
+      <li>
+        <input placeholder="˚C" class="temperature" maxlength="3" size="3"/>˚C allows you to specify a threshold temperature. Any PSU Command that results in an 'off' action will only trigger if all hotends report being cooler than this specified temperature, in degrees Celsius. If you don't care about hotend temperature and just want it to turn off, set this value to 999 or some other ridiculously high number.
+      </li>
+      <li>
+        <select data-bind="options: supportedCommands"></select> lets you select the command to send to the PSU.
+      </li>
+    </ul>
+    <p>The variables here are created and given default values in the <b>Profile</b>></b>Variables</b> section.</p>
+    <hr>
+  </div>
+  <br>
+  Prevent PSU shutdown if a hotend is hotter than <input placeholder="˚C" class="temperature" data-bind="textInput: hotendMax, attr: {disabled: locked}" maxlength="3" size="3"/>˚C
+  <br>
+  PSU Command: <select data-bind="options: supportedCommands, value: command, attr: {disabled: locked}"></select>
+  
+  
 </template>

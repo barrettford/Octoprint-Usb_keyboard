@@ -16,8 +16,6 @@
   USB Keyboard Settings
 </h2>
 
-
-
 <table>
   <thead>
     <tr>
@@ -25,7 +23,7 @@
       <td><select class="profileSelect" data-bind="options: profileNames, value: activeProfileName"></select></td>
       <td><button class="btn btn-primary" data-bind="click: createProfile">{{ _('+') }}</button></td>
       <td><button class="btn btn-default" data-bind="click: configureDevice">{{ _('Device listener configuration') }}</button></td>
-      
+      <td><button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></td>
     </tr>
     <tr>
       <td data-bind="visible: dupeDetected"><span><strong>*** Duplicate profile name detected! ***</strong></span></td>
@@ -33,7 +31,29 @@
   </thead>
 </table>
 
-
+<div data-bind="visible: showingInfo">
+  <hr>
+  <p><b>USB Keyboard Plugin Settings</b>&emsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></p>
+  <ul>
+    <li>
+      <select class="profileSelect" data-bind="options: profileNames"></select> allows you to select the active profile.
+    </li>
+    <li>
+      <button class="btn btn-primary">{{ _('+') }}</button> creates a new profile and makes it active.
+    </li>
+    <li>
+      <button class="btn btn-default">{{ _('Device listener configuration') }}</button> opens the <b>Device Configuration</b> modal.
+      Mac and Windows users shouldn't need to do any configuration,
+      but Linux users may need to select the right input path to connect to the correct device.
+    </li>
+    <li>
+      <button class="btn btn-default" data-bind="css: expandedClass"></button> to the top right shows/hides the keyboard datastream.
+      Use it to see what octoprint is picking up from your keyboard. The key name within single quotes is the same name as used for 
+      commands and the keyboard keys. Feel free to copy/paste them if you want.
+    </li>
+  </ul>
+  <hr>
+</div>
 
 <hr>
 
@@ -73,3 +93,27 @@
     <small>Make sure to click save in the main settings after making changes here.</small> <a href="#" class="btn" data-dismiss="modal" aria-hidden="true">{{ _('Close') }}</a>
   </div>
 </div>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<p>You found my secret text!</p>

@@ -10,6 +10,8 @@
   height: 45px;
 }*/
 
+
+
 #settings_plugin_usb_keyboard table#profileTable {
   text-align: center;
 }
@@ -18,17 +20,26 @@
   font-size: large;
 }
 
+#settings_plugin_usb_keyboard div.infoDiv {
+  float:right;
+  position:absolute;
+  right:0;
+  top:20%;
+  border-radius: 6px;
+  border: 1px solid rgba(0,0,0,0.3);
+  background: rgba(255,255,255,1.0);
+}
+
+
 #settings_plugin_usb_keyboard select {
   width:18ch;
   vertical-align:middle;
   margin-bottom:0px;
 }
 
-#settings_plugin_usb_keyboard td {
+/*#settings_plugin_usb_keyboard td {
   display:table-cell;
-  vertical-align:middle;
-  text-align:center;
-}
+}*/
 
 #settings_plugin_usb_keyboard .sliderCell tr td {
   height: 100px;
@@ -44,22 +55,28 @@
 /*  border: 1px solid #ddd;*/
   overflow: hidden;
 /*  display: table-column;*/
-  white-space: nowrap;
+/*  white-space: nowrap;*/
   padding: 0; 
   margin: 0;
+  vertical-align:middle;
+  text-align:center;
+}
+
+#settings_plugin_usb_keyboard table.commandTable {
+  text-align:left;
 }
 
 #settings_plugin_usb_keyboard button.keyboardKey {
-/*  border: 1px solid #ddd;*/
   overflow: hidden;
-/*  display: table-column;*/
-  white-space: nowrap;
+  white-space: normal;
   padding: 0; 
   margin: 0;
 }
 
 #settings_plugin_usb_keyboard .keyboardTable {
   table-layout:fixed;
+  vertical-align:middle;
+  text-align:center;
 }
 /*
 #settings_plugin_usb_keyboard .keyboardSpacer {
@@ -78,8 +95,18 @@
   width:4ch;   
 }
 
+#settings_plugin_usb_keyboard input.centered {
+  text-align:center;
+}
+
 #settings_plugin_usb_keyboard input.gcodeLine {
   width:30ch;   
+}
+
+#settings_plugin_usb_keyboard textarea.profileDescription {
+  overflow: auto;
+  width:70ch;
+  resize: none;
 }
 
 #settings_plugin_usb_keyboard div.keyboardDataStream {
