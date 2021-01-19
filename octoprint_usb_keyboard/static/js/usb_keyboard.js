@@ -507,7 +507,7 @@ $(function() {
       self.released = params.commandObject.value.released
       self.variables = params.commandObject.value.variables
       self.allowedVariables = params.allowedVariables
-      self.allowedCommandActions = ["printer", "plugin_psucontrol", "save_vars", "listen_vars"]
+      self.allowedCommandActions = ["octoprint", "printer", "plugin_psucontrol", "save_vars", "listen_vars"]
       
       self.commandText = ko.pureComputed(function() {
         if (self.alias() == null || self.alias === "") {
@@ -533,6 +533,10 @@ $(function() {
           case "plugin_psucontrol":
             newCommandActionMap["command"] = "on"
             newCommandActionMap["hotend_max"] = 50
+            break;
+          case "octoprint":
+            newCommandActionMap["command"] = "cancel_print"
+            newCommandActionMap["presses_required"] = 5
             break;
           default:
             console.log("We should never get here...")
@@ -677,6 +681,28 @@ $(function() {
     ko.components.register('sfr-commands-command-plugin-psucontrol', {
       viewModel: CommandsCommandPluginPsucontrolViewModel,
       template: { element: 'template-sfr-commands-command-plugin-psucontrol' }
+    });
+
+    
+    function CommandsCommandOctoprintViewModel(params) {
+      var self = this
+      Lockable.call(self, "action", params.locked)
+      SelfManaged.call(self, params.parentArray, params.commandActionObject)
+      ShowsInfo.call(self)
+      
+
+      // console.log("CommandsCommandOctoprintViewModel raw", params)
+      // console.log("CommandsCommandOctoprintViewModel self", self)
+      
+      self.profile = params.profile;
+      self.type = params.commandActionObject.type;
+      self.command = params.commandActionObject.command;
+      self.presses_required = params.commandActionObject.presses_required.extend({ numeric: 0 });
+      self.supportedCommands = ["cancel_print", "confirm_last_command", "pause_print", "resume_print", "start_print", "toggle_pause_print"]
+    }
+    ko.components.register('sfr-commands-command-octoprint', {
+      viewModel: CommandsCommandOctoprintViewModel,
+      template: { element: 'template-sfr-commands-command-octoprint' }
     });
     
     

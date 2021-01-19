@@ -139,6 +139,9 @@
         <!-- ko if: $data.type() == "plugin_psucontrol" -->
         <li><sfr-commands-command-plugin-psucontrol params='commandActionObject: $data, parentArray: $parent.pressed, profile: $parent.profile, locked: $parent.locked'></sfr-commands-command-plugin-psucontrol></li>
         <!-- /ko -->
+        <!-- ko if: $data.type() == "octoprint" -->
+        <li><sfr-commands-command-octoprint params='commandActionObject: $data, parentArray: $parent.pressed, profile: $parent.profile, locked: $parent.locked'></sfr-commands-command-octoprint></li>
+        <!-- /ko -->
       <!-- /ko -->
       </ol>
     </li>
@@ -155,6 +158,9 @@
         <!-- /ko -->
         <!-- ko if: $data.type() == "plugin_psucontrol" -->
         <li><sfr-commands-command-plugin-psucontrol params='commandActionObject: $data, parentArray: $parent.pressed, profile: $parent.profile, locked: $parent.locked'></sfr-commands-command-plugin-psucontrol></li>
+        <!-- /ko -->
+        <!-- ko if: $data.type() == "octoprint" -->
+        <li><sfr-commands-command-octoprint params='commandActionObject: $data, parentArray: $parent.pressed, profile: $parent.profile, locked: $parent.locked'></sfr-commands-command-octoprint></li>
         <!-- /ko -->
       <!-- /ko -->
       </ol>
@@ -377,6 +383,39 @@
   Prevent PSU shutdown if a hotend is hotter than <input placeholder="˚C" class="temperature" data-bind="textInput: hotendMax, attr: {disabled: locked}" maxlength="3" size="3"/>˚C
   <br>
   PSU Command: <select data-bind="options: supportedCommands, value: command, attr: {disabled: locked}"></select>
+</template>
+
+<template id='template-sfr-commands-command-octoprint'>
+  <strong>Command Type:</strong>
+  &emsp;<span data-bind="text: type"></span>
+  &emsp;<button class="btn btn-default fa fa-arrow-up" data-bind="click: moveSelfUp, attr: {disabled: locked}"></button>
+  &nbsp;<button class="btn btn-default fa fa-arrow-down" data-bind="click: moveSelfDown, attr: {disabled: locked}"></button>
+  &nbsp;<button class="btn btn-danger" data-bind="click: deleteSelf, attr: {disabled: locked}">{{ _('-') }}</button>
+  &nbsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button>
   
-  
+  <div data-bind="visible: showingInfo">
+    <hr>
+    <p><b>Octoprint Command Configuration</b>&emsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></p>
+    <ul>
+      <li>
+        <button class="btn btn-default fa fa-arrow-up"></button><button class="btn btn-default fa fa-arrow-down"></button> moves this command up/down, respectively,
+        in the command execution order.
+      </li>
+      <li>
+        <button class="btn btn-danger">{{ _('-') }}</button> deletes this command. Poof. Gone.
+      </li>
+      <li>
+        <select data-bind="options: supportedCommands"></select> lets you select the command to send to Octoprint. The command "confirm_last_command" causes the last pressed octoprint command to fire, regardless of remaining key presses required.
+      </li>
+      <li>
+        <input placeholder="#" data-bind="textInput: presses_required, attr: {disabled: locked}" maxlength="3" size="3"/> allows you to specify how many key presses, sequentially and without interruption, are required in order to fire this command. This is a safety feature to prevent accidentially canceling/pausing prints with erroneous key presses. This value has no affect for the "confirm_last_command" command.
+      </li>
+    </ul>
+    <p>Note: "confirm_last_command" only works if the last key pressed/released was another octoprint command.</p>
+    <hr>
+  </div>
+  <br>
+  Octoprint Command: <select data-bind="options: supportedCommands, value: command, attr: {disabled: locked}"></select>
+  <br>
+  Requires <input placeholder="#" data-bind="textInput: presses_required, attr: {disabled: locked}" maxlength="3" size="3"/> presses to trigger.
 </template>
