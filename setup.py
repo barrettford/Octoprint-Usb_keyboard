@@ -14,7 +14,7 @@ plugin_package = "octoprint_usb_keyboard"
 plugin_name = "OctoPrint-Usb_keyboard"
 
 # The plugin's version. Can be overwritten within OctoPrint's internal data via __plugin_version__ in the plugin module
-plugin_version = "0.1.5"
+plugin_version = "0.1.6"
 
 # The plugin's description. Can be overwritten within OctoPrint's internal data via __plugin_description__ in the plugin
 # module
@@ -65,7 +65,7 @@ plugin_ignored_packages = []
 # Example:
 #     plugin_requires = ["someDependency==dev"]
 #     additional_setup_parameters = {"dependency_links": ["https://github.com/someUser/someRepo/archive/master.zip#egg=someDependency-dev"]}
-additional_setup_parameters = {}
+additional_setup_parameters = {"python_requires": ">=3,<4"}
 
 ########################################################################################################################
 

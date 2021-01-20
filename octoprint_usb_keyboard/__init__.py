@@ -348,6 +348,8 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     self.listening_variables = {}
     self._settings.set(["key_discovery"], {})
     self.should_stop_polling=False
+    self.octoprint_last_command = None
+    self.octoprint_last_command_presses = 0
     
     eventManager().subscribe("plugin_usb_keyboard_key_event", self._key_event)
     
@@ -492,13 +494,13 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
             {"key":"backspace", "alias":None, "value": {"pressed": [{"type":"printer", "gcode":["G91","G1 E+<distance> F300","G90"], "send_while_printing": False}],   "released": [], "variables":  []                                }},  # move up
             {"key":"kpslash", "alias":"/", "value":   {"pressed": [{"type":"printer", "gcode":["M104 S<hotend>","M140 S<bed>"], "send_while_printing": False}],       "released": [], "variables":  []                                }},  # set hotend and bed
             {"key":"tab", "alias":None, "value":       {"pressed": [{"type":"octoprint", "command":"start_print", "presses_required":5 }],               "released": [], "variables":  []                                }},  # start selected print
-            {"key":"=", "alias":None, "value":       {"pressed": [{"type":"octoprint", "command":"cancel_print", "presses_required":5 }],               "released": [], "variables":  []                                }},  # stop running print
+            {"key":"equal", "alias":"=", "value":       {"pressed": [{"type":"octoprint", "command":"cancel_print", "presses_required":5 }],               "released": [], "variables":  []                                }},  # stop running print
             {"key":"esc", "alias":None, "value":       {"pressed": [{"type":"plugin_psucontrol", "command":"toggle", "hotend_max":50 }],               "released": [], "variables":  []                                }},  # turn off PSU if hotends < 50c
           ],
           "keyboard": {
             "scale": 3,
             "board": [
-              {"keys":[{"key":"esc", "alias":None, "w":1, "h":1}, {"key":None, "alias":None, "w":1, "h":1}, {"key":"tab", "alias":None, "w":1, "h":1}, {"key":"=", "alias":None, "w":1, "h":1}]},
+              {"keys":[{"key":"esc", "alias":None, "w":1, "h":1}, {"key":None, "alias":None, "w":1, "h":1}, {"key":"tab", "alias":None, "w":1, "h":1}, {"key":"equal", "alias":"=", "w":1, "h":1}]},
               {"keys":[{"key":None, "alias":None, "w":1, "h":1}, {"key":"kpslash", "alias":"/", "w":1, "h":1}, {"key":"kpasterisk", "alias":"*", "w":1, "h":1}, {"key":"backspace", "alias":None, "w":1, "h":1}]},
               {"keys":[{"key":"kp7", "alias":"7", "w":1, "h":1}, {"key":"kp8", "alias":"8", "w":1, "h":1}, {"key":"kp9", "alias":"9", "w":1, "h":1}, {"key":"kpminus", "alias":"-", "w":1, "h":1}]},
               {"keys":[{"key":"kp4", "alias":"4", "w":1, "h":1}, {"key":"kp5", "alias":"5", "w":1, "h":1}, {"key":"kp6", "alias":"6", "w":1, "h":1}, {"key":"kpplus", "alias":"+", "w":1, "h":1}]},

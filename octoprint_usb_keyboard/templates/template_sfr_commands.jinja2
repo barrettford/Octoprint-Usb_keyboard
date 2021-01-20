@@ -408,7 +408,7 @@
         <select data-bind="options: supportedCommands"></select> lets you select the command to send to Octoprint. The command "confirm_last_command" causes the last pressed octoprint command to fire, regardless of remaining key presses required.
       </li>
       <li>
-        <input placeholder="#" data-bind="textInput: presses_required, attr: {disabled: locked}" maxlength="3" size="3"/> allows you to specify how many key presses, sequentially and without interruption, are required in order to fire this command. This is a safety feature to prevent accidentially canceling/pausing prints with erroneous key presses. This value has no affect for the "confirm_last_command" command.
+        <input placeholder="#" data-bind="textInput: presses_required, attr: {disabled: locked}" maxlength="3" size="3"/> allows you to specify how many command calls, sequentially and without interruption, are required in order to fire this command. This is a safety feature to prevent accidentially canceling/pausing prints with erroneous key presses. This means that if any other command type is run whiles this number is tracking, it will reset the counter to 0. This value has no affect for the "confirm_last_command" command.
       </li>
     </ul>
     <p>Note: "confirm_last_command" only works if the last key pressed/released was another octoprint command.</p>
