@@ -555,6 +555,21 @@ $(function() {
     });
     
     
+    function CommandsCommandPrinterGcodeViewModel(params) {
+      var self = this
+      Lockable.call(self, "action", params.locked)
+      SelfManaged.call(self, params.parentArray, params.gcodeCommandLine)
+      // console.log("CommandsCommandPrinterGcodeViewModel raw", params)
+      // console.log("CommandsCommandPrinterGcodeViewModel self", self)
+      
+      self.profile = params.profile;
+      self.gcodeCommandLine = params.gcodeCommandLine;
+    }
+    ko.components.register('sfr-commands-command-printer-gcode', {
+      viewModel: CommandsCommandPrinterGcodeViewModel,
+      template: { element: 'template-sfr-commands-command-printer-gcode' }
+    });
+    
     function CommandsCommandPrinterViewModel(params) {
       var self = this
       Lockable.call(self, "action", params.locked)
@@ -567,6 +582,7 @@ $(function() {
       self.type = params.commandActionObject.type;
       self.gcode = params.commandActionObject.gcode;
       self.sendWhilePrinting = params.commandActionObject.send_while_printing;
+      self.newGcodeCommandLine = ko.observable(null)
       
       self.toggleSendWhilePrinting = function() {
         self.sendWhilePrinting(!self.sendWhilePrinting());
@@ -576,19 +592,16 @@ $(function() {
         return self.sendWhilePrinting() ? 'btn-success fa-check' : 'fa-times' ;
       });
       
+      self.disallowAddingGcode = ko.pureComputed(function() {
+        return self.locked() || self.newGcodeCommandLine() == null
+      });
+      
       // this will be called when the user clicks the "+ Row" button and add a new row of data
       self.addLine = function() {
-        // console.log("Clicked + gcode line");
-        self.gcode.push(ko.observableArray(""))
+        self.gcode.push(self.newGcodeCommandLine());
+        
+        self.newGcodeCommandLine(null)
       };
-
-      // this will be called when the user clicks the "+ Row" button and add a new row of data
-      self.deleteLine = function() {
-        // console.log("Clicked - gcode line");
-        // TODO:  Put an "Are you sure?" dialog if the cell has config
-        self.gcode.pop()
-      };
-      
     }
     ko.components.register('sfr-commands-command-printer', {
       viewModel: CommandsCommandPrinterViewModel,
