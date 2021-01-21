@@ -287,18 +287,26 @@
   <br>
   Send while printing: <button class="btn fa" data-bind="css: sendWhilePrintingClass, click: toggleSendWhilePrinting, attr: {disabled: locked}"></button>
   <br>
-  Gcode to run:
+  Gcode to run: <input placeholder="Enter gcode..." data-bind="textInput: newGcodeCommandLine, attr: {disabled: locked}" />  <button class="btn btn-primary" data-bind="click: addLine, attr: {disabled: disallowAddingGcode}">{{ _('+') }}</button>  
+
   <ol>
     <!-- ko foreach: gcode -->
-    <li>
-      <input placeholder="Enter gcode..." class="gcodeLine" data-bind="textInput: $data, attr: {disabled: $parent.locked}"/>
-      <button class="btn btn-danger" data-bind="click: $parent.deleteLine, attr: {disabled: $parent.locked}">{{ _('-') }}</button>
-    </li>
+    <sfr-commands-command-printer-gcode params='gcodeCommandLine: $data, parentArray: $parent.gcode, profile: $parent.profile, locked: $parent.locked'></sfr-commands-command-printer-gcode>
     <!-- /ko -->
   </ol>
-  <button class="btn btn-primary" data-bind="click: addLine, attr: {disabled: locked}">{{ _('+') }}</button>  
   
 </template>
+
+
+<template id='template-sfr-commands-command-printer-gcode'>
+  <li>
+    <input placeholder="Empty?" class="gcodeLine" data-bind="textInput: gcodeCommandLine, attr: {disabled: true}"/>
+    <button class="btn btn-default fa fa-arrow-up" data-bind="click: moveSelfUp, attr: {disabled: locked}"></button>
+    <button class="btn btn-default fa fa-arrow-down" data-bind="click: moveSelfDown, attr: {disabled: locked}"></button>
+    <button class="btn btn-danger" data-bind="click: deleteSelf, attr: {disabled: locked}">{{ _('-') }}</button>
+  </li>
+</template>
+
 
 <template id='template-sfr-commands-command-listen-save-vars'>
   <strong>Command Type:</strong>
