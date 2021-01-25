@@ -300,7 +300,7 @@
 
 <template id='template-sfr-commands-command-printer-gcode'>
   <li>
-    <input placeholder="Empty?" class="gcodeLine" data-bind="textInput: gcodeCommandLine, attr: {disabled: true}"/>
+    <input placeholder="Empty?" class="gcodeLine" data-bind="textInput: gcodeCommandLine" readonly="readonly"/>
     <button class="btn btn-default fa fa-arrow-up" data-bind="click: moveSelfUp, attr: {disabled: locked}"></button>
     <button class="btn btn-default fa fa-arrow-down" data-bind="click: moveSelfDown, attr: {disabled: locked}"></button>
     <button class="btn btn-danger" data-bind="click: deleteSelf, attr: {disabled: locked}">{{ _('-') }}</button>

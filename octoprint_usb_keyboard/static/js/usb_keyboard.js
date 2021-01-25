@@ -120,8 +120,8 @@ $(function() {
         var currentPosition = self.targetArray.indexOf(self.selfObject)
         
         if (!currentPosition == 0) {
-          self.targetArray.remove(self.selfObject)
           self.targetArray.splice(currentPosition - 1, 0, self.selfObject)
+          self.targetArray.splice(currentPosition + 1, 1)
         }
       }
       
@@ -130,8 +130,8 @@ $(function() {
         var currentLastIndex = self.targetArray().length - 1
         
         if (currentPosition != currentLastIndex) {
-          self.targetArray.remove(self.selfObject)
-          self.targetArray.splice(currentPosition + 1, 0, self.selfObject)
+          self.targetArray.splice(currentPosition + 2, 0, self.selfObject)
+          self.targetArray.splice(currentPosition, 1)
         }
       }
     }
@@ -147,25 +147,14 @@ $(function() {
       
       self.keyDiscovery = function(data, event) {
         
-        console.log("data", data)
-        console.log("event", event)
-        
-        // self.root.currentKey(null)
-        // self.editingKey(true)
-        
-        // console.log("Key '" + self.text() + "' pressed, [" + self.row() + "][" + self.column() + "] profile = " + self.profile())
+        // console.log("data", data)
+        // console.log("event", event)
         
         self.root.keyDiscovery.push(self)
       
         // TODO:  DON'T LOSE THIS
         OctoPrint.simpleApiCommand('usb_keyboard', 'key_discovery', {});// {"row":self.row(), "column":self.column(), "profile":self.profile()});
 
-        // self.keyDetectionBinding(null)
-        // self.settings.settings.plugins.usb_keyboard.key_discovery(null)
-        // self.settingsViewModel.saveData({plugins: {usb_keyboard: {key_discovery: {"row":row,"key":key}}}})
-        // self.keyDetectionBinding(self.settings.settings.plugins.usb_keyboard.key_discovery())
-        // console.log("self.keyDetectionBinding() ", self.keyDetectionBinding())
-        // console.log("self.settings() ", self.settingsViewModel.settings.plugins.usb_keyboard.key_discovery)
       };
     }
     function ShowsInfo() {
@@ -722,12 +711,11 @@ $(function() {
     function ProfileViewModel(params) {
       var self = this
       Lockable.call(self, "profile")
+      SelfManaged.call(self, params.profileArray, params.profileObject)
       ShowsInfo.call(self)
-            //
       // console.log("ProfileViewModel raw", params)
       // console.log("ProfileViewModel self", self)
       
-      // self.variables = ko.observable(params.variables)
       self.activeProfileName = params.activeProfileName
       self.profile = params.profileObject.key
       self.description = params.profileObject.value.description
@@ -752,39 +740,46 @@ $(function() {
       });
       
       self.duplicateProfile = function() {
-        var copyName = self.profile() + " copy"
+        var copyName = preventDuplicateProfileNames(self.profile(), null)
         
-        self.dupeDetected(self.profileNames().some(function(value) {
-          return value() == copyName
-        }))
+        var newProfile = ko.mapping.fromJS(ko.toJS(self.profileObject))
+        newProfile.key(copyName)
         
-        if (! self.dupeDetected()) {
-          var newProfile = ko.mapping.fromJS(ko.toJS(self.profileObject))
-          newProfile.key(copyName)
-          
-          self.profileArray.push(newProfile)
-          self.activeProfileName(copyName)
-        }
-      };
+        self.profileArray.push(newProfile)
+        self.activeProfileName(copyName)
+      }
       
       self.editProfileName = function() {
+        var newName = self.newProfileName()
         
-        if (self.profile() != self.newProfileName()) {
-          self.dupeDetected(self.profileNames().some(function(value) {
-            return value() == self.newProfileName()
-          }))
-          
-          if (! self.dupeDetected()) {
-            self.profile(self.newProfileName())
-            self.activeProfileName(self.newProfileName())
-          }
+        if (newName == self.profile()) {
+          console.log("No change")
+          return
         }
+        
+        console.log("New Profile Name", newName)
+        
+        newName = preventDuplicateProfileNames(newName, self.profile())
+        self.newProfileName(newName)
+        
+        if (newName == self.profile()) {
+          console.log("again, No change")
+          return
+        }
+        
+        console.log("New Profile Name again", newName)
+        
+        self.profile(newName)
+        self.activeProfileName(newName)
       }
+
+      self.exportProfileData = ko.pureComputed(function() {
+        return "data:text/json;charset=utf-8," + encodeURIComponent(ko.toJSON(self.profileObject))
+      });
       
-      self.deleteProfile = function() {
-        self.profileArray.remove(self.profileObject)
-      }
-      
+      self.exportProfileName = ko.pureComputed(function() {
+        return self.profile() + ".json"
+      });
     }
     ko.components.register('sfr-profile', {
       viewModel: ProfileViewModel,
@@ -793,32 +788,37 @@ $(function() {
     
     self.dupeDetected = ko.observable(false)
     self.createProfile = function() {
-      var newProfileName = "New Profile"
+      var newProfileName = preventDuplicateProfileNames("New Profile", null)
+
+      var newProfile = ko.mapping.fromJS({"key":newProfileName,
+      "value":{ "description":null,
+                "commands":[],
+                "keyboard":{
+                  "scale": 3,
+                  "board": [
+                    {"keys":[
+                      {"key":null, "alias":null, "w":1, "h":1}
+                    ]}
+                  ]
+                },
+                "variables":[]
+              }});
+      newProfile.key(newProfileName)
       
-      var dupeDetected = self.profileNames().some(function(value) {
-        return value() == newProfileName
-      })
-      
-      if (! dupeDetected) {
-        var newProfile = ko.mapping.fromJS({"key":newProfileName,
-        "value":{ "description":null,
-                  "commands":[],
-                  "keyboard":{
-                    "scale": 3,
-                    "board": [
-                      {"keys":[
-                        {"key":null, "alias":null, "w":1, "h":1}
-                      ]}
-                    ]
-                  },
-                  "variables":[]
-                }});
-        newProfile.key(newProfileName)
-        
-        self.profiles.push(newProfile)
-        self.activeProfileName(newProfileName)
-      }
+      self.profiles.push(newProfile)
+      self.activeProfileName(newProfileName)
     };
+    
+    preventDuplicateProfileNames = function(newName, currentName) {
+      for (name = newName;
+        ko.toJS(self.profileNames).indexOf(newName) > -1;
+        newName = "*" + newName) {
+          if (newName == currentName) {
+            break
+          }
+      }
+      return newName
+    }
     
     self.profileNames = ko.pureComputed(function() {
       var profileNames = []
@@ -854,6 +854,31 @@ $(function() {
       }
       
     }
+    
+    self.fileData = ko.observable();
+    self.fileName = ko.observable();
+    
+    self.fileData.subscribe(function() {
+      if (self.fileData() == null) {
+        return
+      }
+      
+      const searchFor = "base64,";
+      
+      var fileData = self.fileData();
+      var index = fileData.indexOf(searchFor);
+      
+      if (index < 0) {
+        return // Error string "Not a valid profile"?
+      }
+
+      var parsed_json = JSON.parse(atob(fileData.substring(index + searchFor.length)))
+
+      parsed_json.key = preventDuplicateProfileNames(parsed_json.key, null)
+
+      self.profiles.push(ko.mapping.fromJS(parsed_json))
+      self.activeProfileName(parsed_json.key)
+    });
 
     self.devicePathOptions = ko.observableArray()
 
@@ -870,28 +895,6 @@ $(function() {
         console.log("Turning on listening...")
         OctoPrint.simpleApiCommand('usb_keyboard', 'active_listening', {"action":"start"});
       });
-        
-        //<a href="#settings_plugin_usb_keyboard" data-toggle="tab">USB Keyboard</a>
-      
-      
-      // $( "#UsbDeviceConfigModal" ).on('shown', function(){
-      //     alert("I want this to appear after the modal has opened!");
-      // });
-      
-      // self.profiles(self.settingsViewModel.settings.plugins.usb_keyboard.profiles)
-      
-      // self.deviceConfiguration = ko.computed(function() {
-      //   if (self.expanded() == true) {
-      //     console.log("Turning on listening...")
-      //     OctoPrint.simpleApiCommand('usb_keyboard', 'query_devices', {});
-      //     OctoPrint.simpleApiCommand('usb_keyboard', 'active_listening', {"action":"start"});
-      //   }
-      //   else {
-      //     console.log("Turning off listening...")
-      //     OctoPrint.simpleApiCommand('usb_keyboard', 'active_listening', {"action":"stop"});
-      //   }
-      //   return self.deviceQueryMessage()
-      // });
     }
     
     self.onSettingsShown = function() {
@@ -904,9 +907,6 @@ $(function() {
       
       console.log("Turning off listening...")
       OctoPrint.simpleApiCommand('usb_keyboard', 'active_listening', {"action":"stop"});
-      
-      
-      
       
       // TODO: remove duplicate profile names
       // self.settingsViewModel.settings.plugins.usb_keyboard.profiles = self.profiles;

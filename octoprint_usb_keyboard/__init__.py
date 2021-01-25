@@ -650,7 +650,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     # Define your plugin's asset files to automatically include in the
     # core UI here.
     return dict(
-      js=["js/usb_keyboard.js", "js/knockout-repeat.js"],
+      js=["js/usb_keyboard.js", "js/knockout-repeat.js", "js/knockout-file-bind.js"],
       # clientjs=['js/requre.js'],
       # jsclient=['js/requre.js'],
       css=["css/usb_keyboard.css"],

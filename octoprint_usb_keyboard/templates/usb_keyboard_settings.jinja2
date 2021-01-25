@@ -13,7 +13,7 @@
 
 
 <h2>
-  USB Keyboard Settings
+  USB Keyboard Settings <button class="btn btn-warning" style="float:right" data-bind="click: configureDevice">{{ _('Device listener configuration') }}</button>
 </h2>
 
 <table>
@@ -22,12 +22,10 @@
       <td><strong>Active Profile:</strong></td>
       <td><select class="profileSelect" data-bind="options: profileNames, value: activeProfileName"></select></td>
       <td><button class="btn btn-primary" data-bind="click: createProfile">{{ _('+') }}</button></td>
-      <td><button class="btn btn-default" data-bind="click: configureDevice">{{ _('Device listener configuration') }}</button></td>
+      <td><input id="uploadButton" type="file" data-bind="file: {data: fileData, name: fileName, allowed:'application/json'}" hidden=true>
+          <label class="btn btn-default fa fa-upload" for="uploadButton"></label></td>
       <td><button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></td>
     </tr>
-    <tr>
-      <td data-bind="visible: dupeDetected"><span><strong>*** Duplicate profile name detected! ***</strong></span></td>
-    <tr>
   </thead>
 </table>
 
@@ -42,7 +40,12 @@
       <button class="btn btn-primary">{{ _('+') }}</button> creates a new profile and makes it active.
     </li>
     <li>
-      <button class="btn btn-default">{{ _('Device listener configuration') }}</button> opens the <b>Device Configuration</b> modal.
+      <button class="btn btn-default fa fa-upload"></button> lets you select and upload a previously downloaded profile.
+      If a duplicate profile name is found, it will prepend the name with *.
+      The uploaded profile then becomes the active profile.
+    </li>
+    <li>
+      <button class="btn btn-warning">{{ _('Device listener configuration') }}</button> opens the <b>Device Configuration</b> modal.
       Mac and Windows users shouldn't need to do any configuration,
       but Linux users may need to select the right input path to connect to the correct device.
     </li>
