@@ -38,7 +38,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       for variable in vars_found:
         # print(f"variable '{variable}'")
         clean_variable = variable[1:-1]
-        setting_var = self._variables[clean_variable]
+        setting_var = self._profiles.get(self._active_profile_name, {}).get("variables", {})[clean_variable]
         if setting_var is not None:
           sub_command = sub_command.replace(variable, str(setting_var))
         else:
@@ -80,7 +80,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     
     # self._logger.info(f"Key '{key}' {key_state}")
     
-    commands = self._commands
+    commands = self._profiles.get(self._active_profile_name, {}).get("commands", [])
     if not commands:
       # self._logger.info("Commands Empty......")
       return
@@ -157,7 +157,8 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
             saving_var = self.listening_variables[variable]
             if saving_var is not None:
               self._logger.debug(f"Saving value '{saving_var}' to variable '{variable}'.")
-              self._variables[variable] = saving_var
+              settings_variables = self._profiles.get(self._active_profile_name, {}).get("variables", {})
+              settings_variables[variable] = saving_var
               # self._settings.save() #TODO figure out if I really want to save them here
             else:
               self._logger.debug(f"Found nothing to save to variable '{variable}'.")
@@ -189,6 +190,18 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
           self._logger.debug(f"Started listening for variable '{variable}'.")
           self.listening_variables[variable] = None
         continue # Go around again, nothing else to do here
+        
+      
+      # ------------------ Set Active Profile -------------------
+      # {"type":"set_active_profile", "profile":"Profile Name"}
+      if current_action_type == "set_active_profile":
+        # "variables":["distance", "hotend", "bed"]
+        profile = current_action.get("profile")
+        
+        if profile and profile in self._profile_names:
+          self._active_profile_name = profile
+          self._settings
+        continue # Go around again, nothing else to do here
       
       
       # ------------------ Printer -------------------
@@ -196,20 +209,27 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       if current_action_type == "printer":
         # "gcode":["G0 X10 Y10 F6000"]
         gcode_commands = current_action.get("gcode", [])
-        can_send_while_printing = current_action.get("send_while_printing", False)
+        gcode_options = current_action.get("options", "")
+        printer_status = self._printer.get_state_id()
+        can_send_commands = True
         
-        if not can_send_while_printing:
-          printer_status = self._printer.get_state_id()
+        if printer_status == "PRINTING":
+          can_send_commands = "p" in gcode_options
+        elif printer_status == "PAUSED":
+          can_send_commands = "u" in gcode_options
+          
         
-          if printer_status == "PRINTING" or printer_status == "PAUSED":
-            self._logger.debug(f"Found printer commands for key '{key}'. Currently printing, sending nothing.")
-            continue # we don't want to send the command
-        
-        if gcode_commands:
-          subbed_gcode_commands = [self.variable_sub(gcode) for gcode in gcode_commands]
+        if can_send_commands and gcode_commands:
+          filtered_gcode_commands = [code for code in gcode_commands if code.get("code", None)]
+          subbed_gcode_commands = [self.variable_sub(gcode.get("code", "")) for gcode in filtered_gcode_commands]
+          
           self._logger.debug(f"Found printer commands for key '{key}'. Sending '{subbed_gcode_commands}'")
-          self._printer.commands(subbed_gcode_commands)
+          self._printer.commands(commands=subbed_gcode_commands, force=("f" in gcode_options))
+          
+        else:
+          self._logger.debug(f"Found printer commands for key '{key}'. Cannot send while '{printer_status}'")
         continue # Go around again, nothing else to do here
+      
         
       # ------------------ PSU Control -------------------
       # {"type":"plugin_psucontrol", "command":"toggle", "hotend_max": 50}
@@ -319,29 +339,32 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         converted_commands[command["key"]]["variables"] = self.load_variables(command["value"]["variables"])
     return converted_commands
   
-  def load_commands_and_variables(self):
+  def load_profiles(self):
+    profiles = {}
+    for profile in self._settings.get(["profiles"]):
+      profiles[profile["key"]] = profile["value"]
+    
+    for profile_data in profiles.values():
+      profile_data["variables"] = self.load_variables(profile_data.get("variables", []))
+      profile_data["commands"] = self.load_commands(profile_data.get("commands", []))
+      profile_data.pop("keyboard")
+    return profiles
+  
+  def load_settings(self):
+    self._device_path = self._settings.get(["device_path"])
     self._active_profile_name = self._settings.get(["active_profile"])
     
-    profiles = self._settings.get(["profiles"])
-        
-    active_profile = {}
-    for profile in profiles:
-      if profile.get("key") == self._active_profile_name:
-        active_profile = profile.get("value")
+    self._profiles = self.load_profiles()
     
-    self._commands = self.load_commands(active_profile.get("commands", []))
-    self._variables = self.load_variables(active_profile.get("variables", []))
+    self._profile_names = []
+    for profile_name in self._profiles.keys():
+      self._profile_names.append(profile_name)
     
-    
-  def stop_listener_thread(self):
-    self.listener.stop()
-  
-  
   def on_after_startup(self):
     self._logger.info("USB Keyboard loading")
     
     self._active_listening = False
-    self.load_commands_and_variables()
+    self.load_settings()
     self.key_status = {}
     self.key_discovery = {}
     self.last_key_pressed = None
@@ -353,8 +376,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     
     eventManager().subscribe("plugin_usb_keyboard_key_event", self._key_event)
     
-    device_path = self._settings.get(["device_path"])
-    self.listener = KeyboardListenerThread('USB Keyboard Listener Thread', device_path)
+    self.listener = KeyboardListenerThread('USB Keyboard Listener Thread', self._device_path)
     self.listener.start()
     
     self._logger.info("Started Keyboard Listener")
@@ -377,16 +399,130 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
   ##~~ SettingsPlugin mixin
   
   def on_settings_save(self, data):
+    try:
       octoprint.plugin.SettingsPlugin.on_settings_save(self, data)
+      self.load_settings()
+    except TypeError as err:
+      self._logger.error("Saving settings broke!", err)
       
-      self.load_commands_and_variables()
+      
+  def get_settings_version(self):
+    return 1
+    
+    
+  def on_settings_migrate(self, target, current=None):
+    self._logger.debug("Migrating settings")
+    
+    ##########################################################
+    # From https://gist.github.com/nvie/f304caf3b4f1ca4c3884 #
+    ##########################################################
+    def traverse(obj, path=None, callback=None):
+      """
+      Traverse an arbitrary Python object structure (limited to JSON data
+      types), calling a callback function for every element in the structure,
+      and inserting the return value of the callback as the new value.
+      """
+      if path is None:
+        path = []
+
+      if isinstance(obj, dict):
+        value = {k: traverse(v, path + [k], callback) for k, v in obj.items()}
+      elif isinstance(obj, list):
+        value = [traverse(elem, path + [[]], callback) for elem in obj]
+      else:
+        value = obj
+
+      if callback is None:
+        return value
+      else:
+        return callback(path, value)
+
+
+    def traverse_modify(obj, target_path, action):
+      """
+      Traverses an arbitrary object structure and where the path matches,
+      performs the given action on the value, replacing the node with the
+      action's return value.
+      """
+      def transformer(path, value):
+        if path == target_path:
+          return action(value)
+        else:
+          return value
+
+      return traverse(obj, callback=transformer)
+    ##########################################################
+        
+    def migrate_gcode_to_v1(value):
+      new_gcode = {}
+      if value.get("type") == "printer":
+        new_gcode["type"] = "printer"
+        new_gcode["gcode"] = []
+        old_gcode = value.get("gcode", [])
+        for id in range(len(old_gcode)):
+          new_gcode["gcode"].append({"id":id, "code":old_gcode[id]})
+        new_gcode["options"] = ""
+        if value.get("send_while_printing", False):
+          new_gcode["options"] = "pu"
+        return new_gcode
+      return value
+      
+    if current is None or current < 1:
+      settings = self._settings.get([])
+      
+      settings = traverse_modify(settings, ["profiles", [], "value", "commands", [], "value", "pressed", []], migrate_gcode_to_v1)
+      settings = traverse_modify(settings, ["profiles", [], "value", "commands", [], "value", "released", []], migrate_gcode_to_v1)
+      
+      self._settings.set([], settings)
 
   def get_settings_defaults(self):
     # put your plugin's default settings here
+    
+    # Version 1 settings
+    # return dict(
+#       active_profile="default",
+#       device_path="/dev/input/event1",
+#       _config_version=1,
+#
+#       profiles=[
+#         {"key":"Example 10key - pynput", "value":{
+#           "description":"An example profile showing how a simple 10key can be represented, how variables work, and how to use each of the command types. This profile works on Mac or Windows machines connected to a printer with a 300x300 bed that accepts Marlin-flavored gcode.",
+#           "commands":[
+#             # **************************** Mac ******************************
+#             {"key":".", "alias":None, "value":         {"pressed": [{"type":"listen_vars", "variables":["distance", "hotend", "bed"], "send_while_printing": False}],  "released": [{"type":"octoprint","command":"confirm_last_command","presses_required":1},{"type":"save_vars", "variables":["distance", "hotend", "bed"]}], "variables":[]}},  # making this my variable modifier
+#             {"key":"\\x03", "alias":"enter", "value":     {"pressed": [{"type":"printer", "gcode":[{"id":1,"code":"G28 Z"}], "options": ""}],                              "released": [], "variables":  []                                }},# homing z
+#             {"key":"0", "alias":None, "value":         {"pressed": [{"type":"printer", "gcode":[{"id":1,"code":"G28 X Y"}], "options": ""}],                            "released": [], "variables":  [{"key":"distance", "value":0.1}] }},  # homing x, y
+#             {"key":"2", "alias":None, "value":         {"pressed": [{"type":"printer", "gcode":[{"id":4,"code":"G90"},{"id":1,"code":"G91"},{"id":2,"code":"G0 Y-<distance> F6000"},{"id":3,"code":"G90"}], "options": ""}],  "released": [], "variables":  [{"key":"distance", "value":10} ] }},  # move south
+#             {"key":"8", "alias":None, "value":         {"pressed": [{"type":"printer", "gcode":[{"id":4,"code":"G90"},{"id":1,"code":"G91"},{"id":2,"code":"G0 Y+<distance> F6000"},{"id":3,"code":"G90"}], "options": ""}],  "released": [], "variables":  [{"key":"hotend",   "value":205}] }},  # move north
+#             {"key":"tab", "alias":None, "value":       {"pressed": [{"type":"octoprint", "command":"start_print", "presses_required":5 }],               "released": [], "variables":  []                                }},  # start selected print
+#             {"key":"=", "alias":None, "value":       {"pressed": [{"type":"octoprint", "command":"cancel_print", "presses_required":5 }],               "released": [], "variables":  []                                }},  # stop running print
+#             {"key":"esc", "alias":None, "value":       {"pressed": [{"type":"plugin_psucontrol", "command":"toggle", "hotend_max":50 }],               "released": [], "variables":  []                                }}   # turn off PSU if hotends < 50c
+#           ],
+#           "keyboard": {
+#             "scale": 3,
+#             "board": [
+#               {"keys":[{"key":"esc", "alias":None, "w":1, "h":1}, {"key":None, "alias":None, "w":1, "h":1}, {"key":"tab", "alias":None, "w":1, "h":1}, {"key":"=", "alias":None, "w":1, "h":1}]},
+#               {"keys":[{"key":None, "alias":None, "w":1, "h":1}, {"key":"/", "alias":None, "w":1, "h":1}, {"key":"*", "alias":None, "w":1, "h":1}, {"key":"backspace", "alias":None, "w":1, "h":1}]},
+#               {"keys":[{"key":"7", "alias":None, "w":1, "h":1}, {"key":"8", "alias":None, "w":1, "h":1}, {"key":"9", "alias":None, "w":1, "h":1}, {"key":"-", "alias":None, "w":1, "h":1}]},
+#               {"keys":[{"key":"4", "alias":None, "w":1, "h":1}, {"key":"5", "alias":None, "w":1, "h":1}, {"key":"6", "alias":None, "w":1, "h":1}, {"key":"+", "alias":None, "w":1, "h":1}]},
+#               {"keys":[{"key":"1", "alias":None, "w":1, "h":1}, {"key":"2", "alias":None, "w":1, "h":1}, {"key":"3", "alias":None, "w":1, "h":1}, {"key":"\\x03", "alias":"enter", "w":1, "h":2}]},
+#               {"keys":[{"key":"0", "alias":None, "w":2, "h":1}, {"key":".", "alias":None, "w":1, "h":1}]}
+#             ]
+#           },
+#           "variables":[
+#             {"key":"distance", "value":   1 },
+#             {"key":"bed",      "value":  60 },
+#             {"key":"hotend",   "value": 210 }
+#           ]
+#         }}
+#       ]
+#     )
+    
+    # Version 0 settings
     return dict(
-      active_profile="default",
+      active_profile="Example QWERTY 60%",
       device_path="/dev/input/event1",
-      
+
       profiles=[
         {"key":"Example QWERTY 60%","value":{
           "description":"An example profile showing how an entire 60% keyboard can be represented.",
@@ -395,7 +531,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
             "scale": 2,
             "board": [
               {"keys":[
-                {"key":"`", "alias":None, "w":1, "h":1}, 
+                {"key":"`", "alias":None, "w":1, "h":1},
                 {"key":"1", "alias":None, "w":1, "h":1},
                 {"key":"2", "alias":None, "w":1, "h":1},
                 {"key":"3", "alias":None, "w":1, "h":1},
@@ -412,7 +548,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
               ]
             },{
               "keys":[
-                {"key":"tab", "alias":None, "w":1.5, "h":1}, 
+                {"key":"tab", "alias":None, "w":1.5, "h":1},
                 {"key":"q", "alias":None, "w":1, "h":1},
                 {"key":"w", "alias":None, "w":1, "h":1},
                 {"key":"e", "alias":None, "w":1, "h":1},
@@ -429,7 +565,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
               ]
             },{
               "keys":[
-                {"key":"caps_lock", "alias":None, "w":2, "h":1}, 
+                {"key":"caps_lock", "alias":None, "w":2, "h":1},
                 {"key":"a", "alias":None, "w":1, "h":1},
                 {"key":"s", "alias":None, "w":1, "h":1},
                 {"key":"d", "alias":None, "w":1, "h":1},
@@ -445,7 +581,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
               ]
             },{
               "keys":[
-                {"key":"shift", "alias":None, "w":2.5, "h":1}, 
+                {"key":"shift", "alias":None, "w":2.5, "h":1},
                 {"key":"z", "alias":None, "w":1, "h":1},
                 {"key":"x", "alias":None, "w":1, "h":1},
                 {"key":"c", "alias":None, "w":1, "h":1},
@@ -460,7 +596,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
               ]
             },{
               "keys":[
-                {"key":"ctrl", "alias":None, "w":1.5, "h":1}, 
+                {"key":"ctrl", "alias":None, "w":1.5, "h":1},
                 {"key":"alt", "alias":None, "w":1.5, "h":1},
                 {"key":"cmd", "alias":None, "w":1.5, "h":1},
                 {"key":"space", "alias":None, "w":6.5, "h":1},
@@ -620,7 +756,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     
     if command == "key_discovery":
       # self._logger.info(f"key_discovery called, row is {data['row']}, key is {data['column']}")
-      self._logger.info("key_discovery called")
+      self._logger.debug("key_discovery called")
       
       self.key_discovery = data
     elif command == "query_devices":
@@ -698,9 +834,7 @@ __plugin_name__ = "USB Keyboard"
 # Starting with OctoPrint 1.4.0 OctoPrint will also support to run under Python 3 in addition to the deprecated
 # Python 2. New plugins should make sure to run under both versions for now. Uncomment one of the following
 # compatibility flags according to what Python versions your plugin supports!
-#__plugin_pythoncompat__ = ">=2.7,<3" # only python 2
 __plugin_pythoncompat__ = ">=3,<4" # only python 3
-#__plugin_pythoncompat__ = ">=2.7,<4" # python 2 and 3
 
 def register_custom_events(*args, **kwargs):
   return ["key_event"]

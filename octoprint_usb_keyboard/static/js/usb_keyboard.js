@@ -181,7 +181,7 @@ $(function() {
       }
       
       self.infoClass = ko.pureComputed(function() {
-        return self.showingInfo() ? 'btn-warning' : 'btn-info';
+        return self.showingInfo() ? 'btn-warning fa fa-info-circle' : 'btn-info fa fa-info';
       });
     }
     
@@ -440,6 +440,7 @@ $(function() {
       //
       self.commands = params.commands
       self.profile = params.profile
+      self.profileNames = params.profileNames
       self.allowedVariables = params.allowedVariables
       
       self.createCommand = function() {
@@ -484,19 +485,18 @@ $(function() {
       SelfManaged.call(self, params.parentArray, params.commandObject)
       KeyDiscoverable.call(self, params.commandObject.key, params.root)
       ShowsInfo.call(self)
-      
-
       // console.log("CommandsCommandViewModel raw", params)
       // console.log("CommandsCommandViewModel self", self)
       
       self.profile = params.profile
+      self.profileNames = params.profileNames
       self.command = params.commandObject.key
       self.alias = params.commandObject.alias
       self.pressed = params.commandObject.value.pressed
       self.released = params.commandObject.value.released
       self.variables = params.commandObject.value.variables
       self.allowedVariables = params.allowedVariables
-      self.allowedCommandActions = ["octoprint", "printer", "plugin_psucontrol", "save_vars", "listen_vars"]
+      self.allowedCommandActions = ["octoprint", "printer", "plugin_psucontrol", "save_vars", "listen_vars", "set_active_profile"]
       
       self.commandText = ko.pureComputed(function() {
         if (self.alias() == null || self.alias === "") {
@@ -527,6 +527,10 @@ $(function() {
             newCommandActionMap["command"] = "cancel_print"
             newCommandActionMap["presses_required"] = 5
             break;
+          case "set_active_profile":
+            newCommandActionMap["command"] = "set_active_profile"
+            newCommandActionMap["profile"] = null
+            break;
           default:
             console.log("We should never get here...")
         } 
@@ -546,18 +550,101 @@ $(function() {
     
     function CommandsCommandPrinterGcodeViewModel(params) {
       var self = this
-      Lockable.call(self, "action", params.locked)
-      SelfManaged.call(self, params.parentArray, params.gcodeCommandLine)
+      Lockable.call(self, "gcode", params.locked)
+      SelfManaged.call(self, params.parentArray, params.gcodeCommand)
       // console.log("CommandsCommandPrinterGcodeViewModel raw", params)
       // console.log("CommandsCommandPrinterGcodeViewModel self", self)
-      
+
       self.profile = params.profile;
-      self.gcodeCommandLine = params.gcodeCommandLine;
+      self.gcodeCommand = params.gcodeCommand;
+      self.id = self.gcodeCommand.id;
+      self.code = self.gcodeCommand.code;
     }
     ko.components.register('sfr-commands-command-printer-gcode', {
       viewModel: CommandsCommandPrinterGcodeViewModel,
       template: { element: 'template-sfr-commands-command-printer-gcode' }
     });
+
+
+    function CommandsCommandPrinterOptionsViewModel(params) {
+      var self = this
+      Lockable.call(self, "gcode options", params.locked)
+      SelfManaged.call(self, params.parentArray, params.options)
+      Expandable.call(self, "gcode options")
+      ShowsInfo.call(self)
+      
+      const PRINTING = "p"
+      const PAUSED = "u"
+      const FORCE = "f"
+      // console.log("CommandsCommandPrinterOptionsViewModel raw", params)
+      // console.log("CommandsCommandPrinterOptionsViewModel self", self)
+      
+      
+      self.profile = params.profile;
+      self.options = params.options;
+      
+      
+      self.sendWhilePrinting = ko.pureComputed(function() {
+        return self.options().includes(PRINTING);
+      });
+      
+      self.sendWhilePaused = ko.pureComputed(function() {
+        return self.options().includes(PAUSED);
+      });
+      
+      self.forceSend = ko.pureComputed(function() {
+        return self.options().includes(FORCE);
+      });
+      
+      
+      // Toggling the Options
+      
+      self.toggleOption = function(option) {
+        var options = self.options()
+        if (options.includes(option)) {
+          options = options.replace(option, "")
+        }
+        else {
+          options = options + option
+        }
+
+        self.options(options)
+      }
+      
+      self.toggleSendWhilePrinting = function() {
+        self.toggleOption(PRINTING)
+      }
+      
+      self.toggleSendWhilePaused = function() {
+        self.toggleOption(PAUSED)
+      }
+      
+      self.toggleForceSend = function() {
+        self.toggleOption(FORCE)
+      }
+      
+      
+      // Button appearance
+      
+      self.sendWhilePrintingClass = ko.pureComputed(function() {
+        return self.sendWhilePrinting() ? 'btn-success fa-check' : 'fa-times' ;
+      });
+      
+      self.sendWhilePausedClass = ko.pureComputed(function() {
+        return self.sendWhilePaused() ? 'btn-success fa-check' : 'fa-times' ;
+      });
+      
+      self.forceSendClass = ko.pureComputed(function() {
+        return self.forceSend() ? 'btn-success fa-check' : 'fa-times' ;
+      });
+      
+
+    }
+    ko.components.register('sfr-commands-command-printer-options', {
+      viewModel: CommandsCommandPrinterOptionsViewModel,
+      template: { element: 'template-sfr-commands-command-printer-options' }
+    });
+    
     
     function CommandsCommandPrinterViewModel(params) {
       var self = this
@@ -570,26 +657,11 @@ $(function() {
       self.profile = params.profile;
       self.type = params.commandActionObject.type;
       self.gcode = params.commandActionObject.gcode;
-      self.sendWhilePrinting = params.commandActionObject.send_while_printing;
-      self.newGcodeCommandLine = ko.observable(null)
+      self.options = params.commandActionObject.options;
       
-      self.toggleSendWhilePrinting = function() {
-        self.sendWhilePrinting(!self.sendWhilePrinting());
-      }
-      
-      self.sendWhilePrintingClass = ko.pureComputed(function() {
-        return self.sendWhilePrinting() ? 'btn-success fa-check' : 'fa-times' ;
-      });
-      
-      self.disallowAddingGcode = ko.pureComputed(function() {
-        return self.locked() || self.newGcodeCommandLine() == null
-      });
-      
-      // this will be called when the user clicks the "+ Row" button and add a new row of data
+      // this will be called when the user clicks the "+" button and add a new row of gcode
       self.addLine = function() {
-        self.gcode.push(self.newGcodeCommandLine());
-        
-        self.newGcodeCommandLine(null)
+        self.gcode.push(ko.mapping.fromJS({"code":null, "id":Math.floor((Math.random() * 65535))}));
       };
     }
     ko.components.register('sfr-commands-command-printer', {
@@ -597,6 +669,30 @@ $(function() {
       template: { element: 'template-sfr-commands-command-printer' }
     });
     
+    
+    function CommandsCommandSetActiveProfileViewModel(params) {
+      var self = this
+      Lockable.call(self, "action", params.locked)
+      SelfManaged.call(self, params.parentArray, params.commandActionObject)
+      ShowsInfo.call(self)
+      // console.log("CommandsCommandSetActiveProfileViewModel raw", params)
+      // console.log("CommandsCommandSetActiveProfileViewModel self", self)
+      
+      self.profile = params.profile;
+      self.profileNames = params.profileNames;
+      self.type = params.commandActionObject.type;
+      self.profileName = params.commandActionObject.profile;
+      
+      self.allowedProfiles = ko.pureComputed(function() {
+        var allowedProfiles = ko.toJS(self.profileNames())
+        allowedProfiles.splice(allowedProfiles.indexOf(self.profile()), 1)
+        return allowedProfiles
+      });
+    }
+    ko.components.register('sfr-commands-command-set-active-profile', {
+      viewModel: CommandsCommandSetActiveProfileViewModel,
+      template: { element: 'template-sfr-commands-command-set-active-profile' }
+    });
     
     function CommandsCommandListenSaveVarsViewModel(params) {
       var self = this
@@ -922,6 +1018,7 @@ $(function() {
       
       $('#settings_plugin_usb_keyboard button.fa-unlock').trigger('click');     // Lock all locks
       $('#settings_plugin_usb_keyboard button.fa-caret-down').trigger('click'); // Contract all expansions
+      $('#settings_plugin_usb_keyboard button.fa-info-circle').trigger('click'); // Hide all info
     }
     
     // Key Discovery coming back
