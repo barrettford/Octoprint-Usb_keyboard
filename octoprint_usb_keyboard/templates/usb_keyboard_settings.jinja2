@@ -24,14 +24,14 @@
       <td><button class="btn btn-primary" data-bind="click: createProfile">{{ _('+') }}</button></td>
       <td><input id="uploadButton" type="file" data-bind="file: {data: fileData, name: fileName, allowed:'application/json'}" hidden=true>
           <label class="btn btn-default fa fa-upload" for="uploadButton"></label></td>
-      <td><button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></td>
+      <td><button class="btn" data-bind="css: infoClass, click: toggleInfo"></button></td>
     </tr>
   </thead>
 </table>
 
 <div data-bind="visible: showingInfo">
   <hr>
-  <p><b>USB Keyboard Plugin Settings</b>&emsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></p>
+  <p><b>USB Keyboard Plugin Settings</b>&emsp;<button class="btn" data-bind="css: infoClass, click: toggleInfo"></button></p>
   <ul>
     <li>
       <select class="profileSelect" data-bind="options: profileNames"></select> allows you to select the active profile.

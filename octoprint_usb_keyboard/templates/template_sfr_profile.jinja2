@@ -8,10 +8,10 @@
   &emsp;<button class="btn btn-default" data-bind="css: lockedClass, click: toggleLock"></button>
   &nbsp;<button class="btn btn-default fa fa-arrow-up" data-bind="click: moveSelfUp"></button>
   &nbsp;<button class="btn btn-default fa fa-arrow-down" data-bind="click: moveSelfDown"></button>
-  &nbsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button>
+  &nbsp;<button class="btn" data-bind="css: infoClass, click: toggleInfo"></button>
   <div data-bind="visible: showingInfo">
     <hr>
-    <p><b>Profile Management</b>&emsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></p>
+    <p><b>Profile Management</b>&emsp;<button class="btn" data-bind="css: infoClass, click: toggleInfo"></button></p>
     <ul>
       <li>
         <button class="btn btn-default" data-bind="css: lockedClass"></button> locks/unlocks the textfields and buttons.
@@ -61,7 +61,7 @@
   <hr>
   <sfr-keyboard params='keyboard: keyboard, commands: commands, profile: profile'></sfr-keyboard>
   <hr>
-  <sfr-commands params='commands: commands, profile: profile, allowedVariables: allowedVariables'></sfr-commands>
+  <sfr-commands params='commands: commands, profile: profile, profileNames: profileNames, allowedVariables: allowedVariables'></sfr-commands>
   <hr>
   <sfr-variables params='variables: variables, profile: profile'></sfr-variables>
   
