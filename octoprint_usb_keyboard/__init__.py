@@ -457,7 +457,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     def migrate_gcode_to_v1(value):
       new_gcode = {}
       if value.get("type") == "printer":
-        self._logger(f"printer type {settings}")
+        self._logger.info(f"printer type {settings}")
         
         new_gcode["type"] = "printer"
         new_gcode["gcode"] = []
@@ -467,20 +467,20 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         new_gcode["options"] = ""
         if value.get("send_while_printing", False):
           new_gcode["options"] = "pu"
-        self._logger(f"new_gcode {new_gcode}")
+        self._logger.info(f"new_gcode {new_gcode}")
         
         return new_gcode
-      self._logger(f"old value {value}")
+      self._logger.info(f"old value {value}")
       return value
       
     if current is None or current < 1:
       settings = self._settings.get([])
-      self._logger(f"settings before {settings}")
+      self._logger.info(f"settings before {settings}")
       
       settings = traverse_modify(settings, ["profiles", [], "value", "commands", [], "value", "pressed", []], migrate_gcode_to_v1)
       settings = traverse_modify(settings, ["profiles", [], "value", "commands", [], "value", "released", []], migrate_gcode_to_v1)
       
-      self._logger(f"settings after {settings}")
+      self._logger.info(f"settings after {settings}")
       
       self._settings.set([], settings)
 
