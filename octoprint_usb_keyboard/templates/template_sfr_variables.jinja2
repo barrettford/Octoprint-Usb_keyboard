@@ -1,10 +1,10 @@
 <template id='template-sfr-variables'>
   <span><strong>Variables</strong></span>
   &emsp;<button class="btn btn-default" data-bind="css: lockedClass, click: toggleLock"></button>
-  &nbsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button>
+  &nbsp;<button class="btn" data-bind="css: infoClass, click: toggleInfo"></button>
   <div data-bind="visible: showingInfo">
     <hr>
-    <p><b>Variable Names and Defaults</b>&emsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></p>
+    <p><b>Variable Names and Defaults</b>&emsp;<button class="btn" data-bind="css: infoClass, click: toggleInfo"></button></p>
     <ul>
       <li>
         <button class="btn btn-default" data-bind="css: lockedClass"></button> locks/unlocks the textfields and buttons.

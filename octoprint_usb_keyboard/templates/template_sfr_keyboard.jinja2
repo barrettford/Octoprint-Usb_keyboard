@@ -2,11 +2,11 @@
   <span><strong>Keyboard</strong></span>
   &emsp;<button class="btn btn-default" data-bind="css: lockedClass, click: toggleLock"></button>
   &emsp;<input type="number" style="width: 200px" data-bind="attr: {disabled: locked}, slider: {min: 2, max: 6, step: .5, value: keyboardScale, tooltip: 'hide'}" />
-  &emsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button>
+  &emsp;<button class="btn" data-bind="css: infoClass, click: toggleInfo"></button>
   
   <div data-bind="visible: showingInfo">
     <hr>
-    <p><b>Keyboard Configuration</b>&emsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></p>
+    <p><b>Keyboard Configuration</b>&emsp;<button class="btn" data-bind="css: infoClass, click: toggleInfo"></button></p>
     <ul>
       <li>
         <button class="btn btn-default" data-bind="css: lockedClass"></button> locks/unlocks the textfields and buttons.
@@ -15,7 +15,7 @@
         <input type="number" style="width: 70px" data-bind="slider: {min: 2, max: 6, step: .5, value: infoSlider, tooltip: 'hide'}" />&emsp;adjusts the keyboard scale.
       </li>
       <li>
-        First line of <button class="btn btn-primary">{{ _('+') }}</button><button class="btn btn-danger">{{ _('-') }}</button> add/remove, respectively, a row of keys.
+        First line of <button class="btn btn-primary">{{ _('+') }}</button><button class="btn btn-danger">{{ _('-') }}</button> adds/removes, respectively, a row of keys.
       </li>
       <li>
         Following lines of <button class="btn btn-primary">{{ _('+') }}</button><button class="btn btn-danger">{{ _('-') }}</button> add/remove, respectively, single keys from a row.
@@ -50,7 +50,7 @@
   <div data-bind="with: editingKey">
     <div data-bind="visible: showingInfo">
       <hr>
-      <p><b>Keyboard Key Configuration</b>&emsp;<button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></p>
+      <p><b>Keyboard Key Configuration</b>&emsp;<button class="btn" data-bind="css: infoClass, click: toggleInfo"></button></p>
       <ul>
         <li>
           <input class="centered" placeholder="Enter key..."/> allows you to enter/edit the key that triggers this command.
@@ -90,7 +90,7 @@
         <td><input class="centered" placeholder="Enter key..." data-bind="textInput: key" /></td>
         <td><button class="btn btn-default" data-bind="click: keyDiscovery">{{ _('Get Key') }}</button></td>
         <td><button class="btn btn-danger" data-bind="click: clearKey, attr: {disabled: (key() == null)}">{{ _('Clear Key') }}</button></td>
-        <td><button class="btn fa fa-info" data-bind="css: infoClass, click: toggleInfo"></button></td>
+        <td><button class="btn" data-bind="css: infoClass, click: toggleInfo"></button></td>
       </tr>
       <tr>
         <td>Optional Alias:</td>
