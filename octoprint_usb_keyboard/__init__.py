@@ -412,7 +412,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     
     
   def on_settings_migrate(self, target, current=None):
-    self._logger.info("Migrating settings target {target}, current {current}")
+    self._logger.debug("Migrating settings target {target}, current {current}")
     
     ##########################################################
     # From https://gist.github.com/nvie/f304caf3b4f1ca4c3884 #
@@ -456,9 +456,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         
     def migrate_gcode_to_v1(value):
       new_gcode = {}
-      if value.get("type") == "printer":
-        self._logger.info(f"printer type {settings}")
-        
+      if value.get("type") == "printer":        
         new_gcode["type"] = "printer"
         new_gcode["gcode"] = []
         old_gcode = value.get("gcode", [])
@@ -467,28 +465,22 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         new_gcode["options"] = ""
         if value.get("send_while_printing", False):
           new_gcode["options"] = "pu"
-        self._logger.info(f"new_gcode {new_gcode}")
-        
         return new_gcode
-      self._logger.info(f"old value {value}")
       return value
       
     if current is None or current < 1:
       settings = self._settings.get([])
-      self._logger.info(f"settings before {settings}")
       
       settings = traverse_modify(settings, ["profiles", [], "value", "commands", [], "value", "pressed", []], migrate_gcode_to_v1)
       settings = traverse_modify(settings, ["profiles", [], "value", "commands", [], "value", "released", []], migrate_gcode_to_v1)
-      
-      self._logger.info(f"settings after {settings}")
-      
+            
       self._settings.set([], settings)
 
   def get_settings_defaults(self):
     # Remember to keep _config_version up to date
     # put your plugin's default settings here
     
-    # Version 1 settings
+    # Version 0 settings
     return dict(
       active_profile="Example QWERTY 60%",
       device_path="/dev/input/event1",
