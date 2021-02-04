@@ -5,13 +5,12 @@ import octoprint.plugin
 import octoprint.printer
 import re
 import json
-import requests
-import sys
+# import requests
 import time
-if sys.platform.startswith("linux"):
-  from .keyboard_listener_evdev import KeyboardListenerThread 
-else:
-  from .keyboard_listener_pynput import KeyboardListenerThread 
+import os
+import uuid
+from .usb_keyboard.util import traverse_modify
+from .usb_keyboard.listener import KeyboardListenerThread
 from octoprint.events import eventManager
 
 
@@ -340,9 +339,11 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     return converted_commands
   
   def load_profiles(self):
+    profile_list = self._settings.get(["profiles"])
+    
     profiles = {}
     for profile in self._settings.get(["profiles"]):
-      profiles[profile["key"]] = profile["value"]
+      profiles[profile["key"]] = self.load_profile_from_data_folder(profile["value"])
     
     for profile_data in profiles.values():
       profile_data["variables"] = self.load_variables(profile_data.get("variables", []))
@@ -398,7 +399,81 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
 
   ##~~ SettingsPlugin mixin
   
-  def on_settings_save(self, data):
+  def get_profiles_data_folder(self):
+    folder = self.get_plugin_data_folder()
+    profiles = os.path.join(folder, "profiles") 
+
+    if not os.path.isdir(profiles):
+      os.makedirs(profiles)
+    return profiles
+  
+  def save_profile_to_data_folder(self, profile_key, profile_value):
+    profiles_folder = self.get_profiles_data_folder()
+    
+    uuid_name = str(uuid.uuid3(uuid.NAMESPACE_URL, profile_key))
+    
+    profile_json_filename = os.path.join(profiles_folder, uuid_name)
+    profile_json = json.dumps(profile_value, separators=(",",":"))
+    with open(profile_json_filename, "w+") as f:
+        f.write(profile_json)
+    return uuid_name
+  
+  def save_profiles_to_data_folder(self, data):
+    profiles = data.get("profiles", [])
+    saved_filenames = []
+
+    if profiles:
+      for profile in profiles:
+        profile_value = profile.get("value", {})
+        profile_key = profile.get("key")
+        if profile_value and profile_key:
+          uuid_name = self.save_profile_to_data_folder(profile_key, profile_value)
+          profile["value"] = uuid_name
+          saved_filenames.append(uuid_name)
+          
+      data["profiles"] = profiles
+      
+    profiles = self._settings.get(["profiles"])
+    for profile in profiles:
+      filename = profile.get("key")
+      if filename:
+        saved_filenames.append(filename)
+
+    # Now cleanup deleted profiles
+    profiles_folder = self.get_profiles_data_folder()
+    filelist = [ f for f in os.listdir(profiles_folder) if f not in saved_filenames and not f.startswith(".") ]
+    for f in filelist:
+      os.remove(os.path.join(profiles_folder, f))
+
+    return data
+
+  def load_profiles_from_data_folder(self, data):
+    profiles_folder = self.get_profiles_data_folder()
+    profiles = data.get("profiles")
+
+    if profiles:
+      for profile in profiles:
+        profile_value = profile.get("value", {})
+        if isinstance(profile_value, str):
+          # Then we're a filename
+          profile["value"] = self.load_profile_from_data_folder(profile_value)
+
+      data["profiles"] = profiles
+
+    return data
+    
+  def load_profile_from_data_folder(self, profile_filename):
+    profiles_folder = self.get_profiles_data_folder()
+    
+    profile_json_filename = os.path.join(profiles_folder, profile_filename)
+    with open(profile_json_filename, 'r') as f:
+        profile_json=f.read()
+    return json.loads(profile_json)
+  
+  
+  def on_settings_save(self, data): 
+    data = self.save_profiles_to_data_folder(data)
+    
     try:
       octoprint.plugin.SettingsPlugin.on_settings_save(self, data)
       self.load_settings()
@@ -408,52 +483,24 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       
   def get_settings_version(self):
     # will be in settings as _config_version
-    return 1
+    return 2
+    
+    
+  def on_settings_load(self):    
+    data = octoprint.plugin.SettingsPlugin.on_settings_load(self)
+
+    data = self.load_profiles_from_data_folder(data)
+    
+    return data
     
     
   def on_settings_migrate(self, target, current=None):
-    self._logger.debug("Migrating settings target {target}, current {current}")
+    if current is None:
+      current = 0;
     
-    ##########################################################
-    # From https://gist.github.com/nvie/f304caf3b4f1ca4c3884 #
-    ##########################################################
-    def traverse(obj, path=None, callback=None):
-      """
-      Traverse an arbitrary Python object structure (limited to JSON data
-      types), calling a callback function for every element in the structure,
-      and inserting the return value of the callback as the new value.
-      """
-      if path is None:
-        path = []
-
-      if isinstance(obj, dict):
-        value = {k: traverse(v, path + [k], callback) for k, v in obj.items()}
-      elif isinstance(obj, list):
-        value = [traverse(elem, path + [[]], callback) for elem in obj]
-      else:
-        value = obj
-
-      if callback is None:
-        return value
-      else:
-        return callback(path, value)
-
-
-    def traverse_modify(obj, target_path, action):
-      """
-      Traverses an arbitrary object structure and where the path matches,
-      performs the given action on the value, replacing the node with the
-      action's return value.
-      """
-      def transformer(path, value):
-        if path == target_path:
-          return action(value)
-        else:
-          return value
-
-      return traverse(obj, callback=transformer)
-    ##########################################################
-        
+    self._logger.debug("Migrating settings target {target}, current {current}")
+    settings_mitrated = False
+    
     def migrate_gcode_to_v1(value):
       new_gcode = {}
       if value.get("type") == "printer":        
@@ -467,13 +514,18 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
           new_gcode["options"] = "pu"
         return new_gcode
       return value
-      
-    if current is None or current < 1:
-      settings = self._settings.get([])
-      
+    
+    settings = self._settings.get([])
+    if current < 1:
       settings = traverse_modify(settings, ["profiles", [], "value", "commands", [], "value", "pressed", []], migrate_gcode_to_v1)
       settings = traverse_modify(settings, ["profiles", [], "value", "commands", [], "value", "released", []], migrate_gcode_to_v1)
-            
+      settings_mitrated = True
+
+    if current < 2:
+      settings = self.save_profiles_to_data_folder(settings)
+      settings_mitrated = True
+
+    if settings_mitrated:
       self._settings.set([], settings)
 
   def get_settings_defaults(self):
