@@ -23,16 +23,16 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
                          octoprint.plugin.TemplatePlugin):
 
   ##~~EventHandlerPlugin mixin
-  
+
   # def on_event(self, event, payload):
   #   self._logger.info(f"********* ON EVENT ********** {event}")
-    
+
   def variable_sub(self, command):
     if not command:
       return command
     sub_command = command
     vars_found = re.findall("<.*>", sub_command)
-    
+
     if vars_found:
       for variable in vars_found:
         # print(f"variable '{variable}'")
@@ -44,75 +44,75 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
           self._logger.error(f"No value for variable '{clean_variable}'... Is this intentional?")
           return None
     return sub_command
-    
+
   def send_key_discovery(self, data):
     self._plugin_manager.send_plugin_message(self._identifier, data)
-  
+
 
   ## It's better to subscribe to our event than to get them all and ignore most.
   def _key_event(self, event, payload):
     # self._logger.info(f"********* SUBSCRIBE ********** {event}")
     key = payload["key"]
     key_state = payload["key_state"]
-    
-    
+
+
     if self._active_listening:
       if time.time() - self._active_listening_start > 10 * 60:
         self._active_listening_start = False
       else:
         self._plugin_manager.send_plugin_message(self._identifier, {"key":key, "key_state":key_state, "reply":"active_listening"})
-    
-    
+
+
     # print(all_events())
     if key_state == "pressed":
       self.last_key_pressed = key
       if self.key_discovery:
         self._logger.debug(f"Key Discovery '{self.key_discovery}'")
-        
+
         self.key_discovery["name"] = key
         self.key_discovery["reply"] = "key_discovery"
         self._logger.debug(f"Frontend asked for key, detecting keypress '{key}'")
         self.send_key_discovery(self.key_discovery)
         self.key_discovery = {}
         return
-    
-    
+
+
     # self._logger.info(f"Key '{key}' {key_state}")
-    
+
     commands = self._profiles.get(self._active_profile_name, {}).get("commands", [])
     if not commands:
       # self._logger.info("Commands Empty......")
       return
-      
+
     # "KP1":    {"pressed": [{"type":"printer", "gcode":["G0 X10 Y10 F6000"]}],                  "variable_values": {"distance":"1"}     }
-      
+
     key_actions = commands.get(key)
     if not key_actions:
       return
-      
+
     # {"pressed": [{"type":"printer", "gcode":["G0 X10 Y10 F6000"]}],                  "variable_values": {"distance":"1"}
-    
-    
+
+
     state_key_actions = key_actions.get(key_state, {})
     #[{"type":"printer", "gcode":["G0 X10 Y10 F6000"]}, {"type":"printer", "gcode":["G0 X10 Y10 F6000"]}]
-    
+
     for current_action in state_key_actions:
       # {"type":"printer", "gcode":["G0 X10 Y10 F6000"]}
       current_action_type = current_action.get("type")
       if not current_action_type:
         self._logger.debug(f"Found action with no type! Guess we do nothing...")
         continue
-      
-      
+
+
       # ------------------ Octoprint -------------------
       # {"type":"octoprint", "command":"cancel_print", "presses_required":1}
       if current_action_type == "octoprint":
         # "command":"cancel_print"
         command = current_action.get("command")
         presses_required = current_action.get("presses_required", 1)
-        
+
         self._logger.debug(f"Found octoprint command '{command}' for key '{key}'.")
-        
+
         if command == "confirm_last_command":
           command = self.octoprint_last_command;
           command_presses = -1
@@ -123,7 +123,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
             command_presses = self.octoprint_last_command_presses + 1
           else:
             command_presses = 1
-        
+
         if command and (command_presses < 0 or command_presses >= presses_required):
           if command == "cancel_print":
             self._printer.cancel_print()
@@ -144,8 +144,8 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       else:
         self.octoprint_last_command = None
         self.octoprint_last_command_presses = 0
-      
-      
+
+
       # ------------------ Saving Vars -------------------
       # {"type":"save_vars",   "variables":["distance", "hotend", "bed"]}
       if current_action_type == "save_vars":
@@ -163,14 +163,14 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
               self._logger.debug(f"Found nothing to save to variable '{variable}'.")
             del self.listening_variables[variable]
         continue # Go around again, nothing else to do here
-        
-        
+
+
       # ------------------ Listening Vars -------------------
       # handle if listening variables
       if self.listening_variables:
         self._logger.debug(f"Listening for variables {self.listening_variables.keys()}.")
         key_values = key_actions.get("variables", None)
-        
+
         if key_values:
           for variable in self.listening_variables:
             variable_value = key_values.get(variable)
@@ -178,8 +178,8 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
               self._logger.debug(f"Found variable value for key '{key}'. Setting variable '{variable}' as value '{variable_value}'.")
               self.listening_variables[variable] = variable_value
         continue # Go around again, nothing else to do here
-        
-        
+
+
       # ------------------ Start Listening Vars -------------------
       # {"type":"listen_vars", "variables":["distance", "hotend", "bed"]}
       if current_action_type == "listen_vars":
@@ -189,20 +189,20 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
           self._logger.debug(f"Started listening for variable '{variable}'.")
           self.listening_variables[variable] = None
         continue # Go around again, nothing else to do here
-        
-      
+
+
       # ------------------ Set Active Profile -------------------
       # {"type":"set_active_profile", "profile":"Profile Name"}
       if current_action_type == "set_active_profile":
         # "variables":["distance", "hotend", "bed"]
         profile = current_action.get("profile")
-        
+
         if profile and profile in self._profile_names:
           self._active_profile_name = profile
           self._settings
         continue # Go around again, nothing else to do here
-      
-      
+
+
       # ------------------ Printer -------------------
       # {"type":"printer", "gcode":["G0 X10 Y10 F6000"], "send_while_printing":False}
       if current_action_type == "printer":
@@ -211,42 +211,42 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         gcode_options = current_action.get("options", "")
         printer_status = self._printer.get_state_id()
         can_send_commands = True
-        
+
         if printer_status == "PRINTING":
           can_send_commands = "p" in gcode_options
         elif printer_status == "PAUSED":
           can_send_commands = "u" in gcode_options
-          
-        
+
+
         if can_send_commands and gcode_commands:
           filtered_gcode_commands = [code for code in gcode_commands if code.get("code", None)]
           subbed_gcode_commands = [self.variable_sub(gcode.get("code", "")) for gcode in filtered_gcode_commands]
-          
+
           self._logger.debug(f"Found printer commands for key '{key}'. Sending '{subbed_gcode_commands}'")
           self._printer.commands(commands=subbed_gcode_commands, force=("f" in gcode_options))
-          
+
         else:
           self._logger.debug(f"Found printer commands for key '{key}'. Cannot send while '{printer_status}'")
         continue # Go around again, nothing else to do here
-      
-        
+
+
       # ------------------ PSU Control -------------------
       # {"type":"plugin_psucontrol", "command":"toggle", "hotend_max": 50}
       if current_action_type == "plugin_psucontrol":
-        # "command":"toggle, "can_trigger_while_hot":False, "hotend_max":        
+        # "command":"toggle, "can_trigger_while_hot":False, "hotend_max":
         PSU_STATES = {"on":1, "off":-1, "toggle":0}
         psu_command = current_action.get("command")
-        
+
         if psu_command and psu_command in PSU_STATES:
           psucontrol_info = self._plugin_manager.get_plugin_info("psucontrol", require_enabled=True)
-          if psucontrol_info:            
+          if psucontrol_info:
             psucontrol = self._plugin_manager.get_plugin("psucontrol")
             psucontrol_info_impl = psucontrol_info.get_implementation()
 
             psu_is_on = psucontrol_info_impl.isPSUOn
-        
+
             desired_state = PSU_STATES[psu_command]
-        
+
             if not psu_is_on and desired_state > -1:
               self._logger.debug(f"Found psu command for key '{key}'. Sending '{psu_command}'")
               psucontrol.PSUControl.turn_psu_on(psucontrol_info_impl)
@@ -255,7 +255,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
               hotend_max = current_action.get("hotend_max", 50)
 
               printer_temps = self._printer.get_current_temperatures()
-              
+
               for tool, tool_temps in printer_temps.items():
                 if tool.startswith("tool") and tool_temps.get("actual", 0) > hotend_max:
                   tools_too_hot_to_turn_off_psu = True
@@ -270,7 +270,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
           else:
             self._logger.error(f"PSU Control plugin is Disabled or Not Installed!")
 
-        
+
             #
       # plugin_api_commands = current_action.get("plugin_api", [])
       # for plugin_api_command in plugin_api_commands:
@@ -291,7 +291,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       #     response = requests.post(f"http://127.0.0.1:{self._settings.global_get(['server', 'port'])}/api/plugin/{plugin_id}",
       #                              json={"command":psu_command, "data":},
       #                              headers={"X-Api-Key": self._settings.global_get(["api", "key"])})
-        
+
         # psucontrol.PSUControl.turn_psu_on(psucontrol_info.get_implementation())
 
         # response = requests.get("http://127.0.0.1:{}/api/plugin/psucontrol".format(self._settings.global_get(["server", "port"])),
@@ -302,11 +302,11 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
 #                                  json={"command":psu_command},
 #                                  headers={"X-Api-Key": self._settings.global_get(["api", "key"])})
 #         self._logger.info(f"*---- Got response from PSU '{response}' '{response.text}'. ----*")
-        
-        
-        
-      
-      
+
+
+
+
+
       #logger_command = current_action.get("logger", False)
 #       if logger_command:
 #         self._logger.info(f"*---- Found logger command for key '{key}'. ----*")
@@ -321,8 +321,8 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
 
 
   ##~~ StartupPlugin mixin
-  
-  
+
+
   def load_variables(self, variable_array):
     converted_variables = {}
     for variable in variable_array:
@@ -337,33 +337,33 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         converted_commands[command["key"]] = command["value"]
         converted_commands[command["key"]]["variables"] = self.load_variables(command["value"]["variables"])
     return converted_commands
-  
+
   def load_profiles(self):
     profile_list = self._settings.get(["profiles"])
-    
+
     profiles = {}
     for profile in self._settings.get(["profiles"]):
       profiles[profile["key"]] = self.load_profile_from_data_folder(profile["value"])
-    
+
     for profile_data in profiles.values():
       profile_data["variables"] = self.load_variables(profile_data.get("variables", []))
       profile_data["commands"] = self.load_commands(profile_data.get("commands", []))
       profile_data.pop("keyboard")
     return profiles
-  
+
   def load_settings(self):
     self._device_path = self._settings.get(["device_path"])
     self._active_profile_name = self._settings.get(["active_profile"])
-    
+
     self._profiles = self.load_profiles()
-    
+
     self._profile_names = []
     for profile_name in self._profiles.keys():
       self._profile_names.append(profile_name)
-    
+
   def on_after_startup(self):
     self._logger.info("USB Keyboard loading")
-    
+
     self._active_listening = False
     self.load_settings()
     self.key_status = {}
@@ -374,50 +374,50 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     self.should_stop_polling=False
     self.octoprint_last_command = None
     self.octoprint_last_command_presses = 0
-    
+
     eventManager().subscribe("plugin_usb_keyboard_key_event", self._key_event)
-    
+
     self.listener = KeyboardListenerThread('USB Keyboard Listener Thread', self._device_path)
     self.listener.start()
-    
+
     self._logger.info("Started Keyboard Listener")
-    
-    
-    
+
+
+
     # self.listener = threading.Thread(target=key_read_loop, daemon=True) # Make thread a daemon thread
     # self.listener.start()
     # self.listener = threading.Thread(target=keyboard_listener, daemon=True) # Make thread a daemon thread
     # self.listener.start()
     # self.listener = keyboard.Listener(on_press=on_press,on_release=on_release,suppress=False)
     # self.listener.start()
-    
+
   def on_shutdown(self):
     self.listener.stop()
     # self.listener.join(0.1)
     self._logger.info("Stopped Keyboard Listener")
-    
+
 
   ##~~ SettingsPlugin mixin
-  
+
   def get_profiles_data_folder(self):
     folder = self.get_plugin_data_folder()
-    profiles = os.path.join(folder, "profiles") 
+    profiles = os.path.join(folder, "profiles")
 
     if not os.path.isdir(profiles):
       os.makedirs(profiles)
     return profiles
-  
+
   def save_profile_to_data_folder(self, profile_key, profile_value):
     profiles_folder = self.get_profiles_data_folder()
-    
+
     uuid_name = str(uuid.uuid3(uuid.NAMESPACE_URL, profile_key))
-    
+
     profile_json_filename = os.path.join(profiles_folder, uuid_name)
     profile_json = json.dumps(profile_value, separators=(",",":"))
     with open(profile_json_filename, "w+") as f:
         f.write(profile_json)
     return uuid_name
-  
+
   def save_profiles_to_data_folder(self, data):
     profiles = data.get("profiles", [])
     saved_filenames = []
@@ -430,9 +430,9 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
           uuid_name = self.save_profile_to_data_folder(profile_key, profile_value)
           profile["value"] = uuid_name
           saved_filenames.append(uuid_name)
-          
+
       data["profiles"] = profiles
-      
+
     profiles = self._settings.get(["profiles"])
     for profile in profiles:
       filename = profile.get("key")
@@ -461,49 +461,49 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       data["profiles"] = profiles
 
     return data
-    
+
   def load_profile_from_data_folder(self, profile_filename):
     profiles_folder = self.get_profiles_data_folder()
-    
+
     profile_json_filename = os.path.join(profiles_folder, profile_filename)
     with open(profile_json_filename, 'r') as f:
         profile_json=f.read()
     return json.loads(profile_json)
-  
-  
-  def on_settings_save(self, data): 
+
+
+  def on_settings_save(self, data):
     data = self.save_profiles_to_data_folder(data)
-    
+
     try:
       octoprint.plugin.SettingsPlugin.on_settings_save(self, data)
       self.load_settings()
     except TypeError as err:
       self._logger.error("Saving settings broke!", err)
-      
-      
+
+
   def get_settings_version(self):
     # will be in settings as _config_version
     return 2
-    
-    
-  def on_settings_load(self):    
+
+
+  def on_settings_load(self):
     data = octoprint.plugin.SettingsPlugin.on_settings_load(self)
 
     data = self.load_profiles_from_data_folder(data)
-    
+
     return data
-    
-    
+
+
   def on_settings_migrate(self, target, current=None):
     if current is None:
       current = 0;
-    
+
     self._logger.debug("Migrating settings target {target}, current {current}")
     settings_mitrated = False
-    
+
     def migrate_gcode_to_v1(value):
       new_gcode = {}
-      if value.get("type") == "printer":        
+      if value.get("type") == "printer":
         new_gcode["type"] = "printer"
         new_gcode["gcode"] = []
         old_gcode = value.get("gcode", [])
@@ -514,7 +514,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
           new_gcode["options"] = "pu"
         return new_gcode
       return value
-    
+
     settings = self._settings.get([])
     if current < 1:
       settings = traverse_modify(settings, ["profiles", [], "value", "commands", [], "value", "pressed", []], migrate_gcode_to_v1)
@@ -531,7 +531,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
   def get_settings_defaults(self):
     # Remember to keep _config_version up to date
     # put your plugin's default settings here
-    
+
     # Version 0 settings
     return dict(
       active_profile="Example QWERTY 60%",
@@ -544,7 +544,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
             "scale": 2,
             "board": [
               {"keys":[
-                {"key":"`", "alias":None, "w":1, "h":1}, 
+                {"key":"`", "alias":None, "w":1, "h":1},
                 {"key":"1", "alias":None, "w":1, "h":1},
                 {"key":"2", "alias":None, "w":1, "h":1},
                 {"key":"3", "alias":None, "w":1, "h":1},
@@ -561,7 +561,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
               ]
             },{
               "keys":[
-                {"key":"tab", "alias":None, "w":1.5, "h":1}, 
+                {"key":"tab", "alias":None, "w":1.5, "h":1},
                 {"key":"q", "alias":None, "w":1, "h":1},
                 {"key":"w", "alias":None, "w":1, "h":1},
                 {"key":"e", "alias":None, "w":1, "h":1},
@@ -578,7 +578,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
               ]
             },{
               "keys":[
-                {"key":"caps_lock", "alias":None, "w":2, "h":1}, 
+                {"key":"caps_lock", "alias":None, "w":2, "h":1},
                 {"key":"a", "alias":None, "w":1, "h":1},
                 {"key":"s", "alias":None, "w":1, "h":1},
                 {"key":"d", "alias":None, "w":1, "h":1},
@@ -594,7 +594,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
               ]
             },{
               "keys":[
-                {"key":"shift", "alias":None, "w":2.5, "h":1}, 
+                {"key":"shift", "alias":None, "w":2.5, "h":1},
                 {"key":"z", "alias":None, "w":1, "h":1},
                 {"key":"x", "alias":None, "w":1, "h":1},
                 {"key":"c", "alias":None, "w":1, "h":1},
@@ -609,7 +609,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
               ]
             },{
               "keys":[
-                {"key":"ctrl", "alias":None, "w":1.5, "h":1}, 
+                {"key":"ctrl", "alias":None, "w":1.5, "h":1},
                 {"key":"alt", "alias":None, "w":1.5, "h":1},
                 {"key":"cmd", "alias":None, "w":1.5, "h":1},
                 {"key":"space", "alias":None, "w":6.5, "h":1},
@@ -749,9 +749,9 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         }}
       ]
     )
-    
+
   ##~~ SimpleApi mixin
-  
+
   def get_api_commands(self):
     return dict(
       key_discovery=[],# ["row", "column", "profile"],
@@ -762,14 +762,14 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
 
   def on_api_command(self, command, data):
     data["reply"] = command
-    
+
     # self._logger.info(f"Received command from frontend '{command}' with '{data}'.")
-    
-    
+
+
     if command == "key_discovery":
       # self._logger.info(f"key_discovery called, row is {data['row']}, key is {data['column']}")
       self._logger.debug("key_discovery called")
-      
+
       self.key_discovery = data
     elif command == "query_devices":
       self._logger.debug(f"configure_listener called, asking listener for more data")
@@ -786,8 +786,8 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       self._active_listening = (action == "start")
       if self._active_listening:
         self._active_listening_start = time.time()
-        
-      
+
+
 
   def on_api_get(self, request):
       return 'f{"last_key_pressed"="{self.last_key_pressed}"}'
@@ -798,7 +798,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     # Define your plugin's asset files to automatically include in the
     # core UI here.
     return dict(
-      js=["js/usb_keyboard.js", "js/knockout-repeat.js", "js/knockout-file-bind.js"],
+      js=["js/usb_keyboard.js", "js/helper_interfaces.js", "js/knockout-repeat.js", "js/knockout-file-bind.js"],
       # clientjs=['js/requre.js'],
       # jsclient=['js/requre.js'],
       css=["css/usb_keyboard.css"],
@@ -806,7 +806,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     )
 
   ##~~ TemplatePlugin mixin
-  
+
   def get_template_configs(self):
     return [
       # dict(type="navbar", custom_bindings=False),
@@ -834,8 +834,8 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         pip="https://github.com/barrettford/OctoPrint-Usb_keyboard/archive/{target_version}.zip"
       )
     )
-    
-  
+
+
 
 
 # If you want your plugin to be registered within OctoPrint under a different name than what you defined in setup.py
@@ -853,7 +853,7 @@ def register_custom_events(*args, **kwargs):
 
 def __plugin_load__():
   plugin = Usb_keyboardPlugin()
-  
+
   global __plugin_implementation__
   __plugin_implementation__ = plugin
 
