@@ -31,7 +31,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     if not command:
       return command
     sub_command = command
-    vars_found = re.findall("<.*>", sub_command)
+    vars_found = re.findall("<[^<>]*>", sub_command)
 
     if vars_found:
       for variable in vars_found:
@@ -798,7 +798,43 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
     # Define your plugin's asset files to automatically include in the
     # core UI here.
     return dict(
-      js=["js/usb_keyboard.js", "js/helper_interfaces.js", "js/knockout-repeat.js", "js/knockout-file-bind.js"],
+      js=[
+      # Main Viewmodel
+      "js/usb_keyboard.js",
+      # Helpful interfaces for Viewmodels
+      "js/helper_interfaces.js",
+      # Viewmodels
+      #   Profile
+      "js/viewmodels/profile_viewmodel.js",
+      #   Keyboard
+      "js/viewmodels/keyboard/viewmodel.js",
+      "js/viewmodels/keyboard/row_viewmodel.js",
+      "js/viewmodels/keyboard/row_key_viewmodel.js",
+      #   Variables
+      "js/viewmodels/variables/viewmodel.js",
+      #   Commands
+      "js/viewmodels/commands/viewmodel.js",
+      #     Command
+      "js/viewmodels/commands/command/viewmodel.js",
+      #       Printer
+      "js/viewmodels/commands/command/printer/viewmodel.js",
+      "js/viewmodels/commands/command/printer/gcode_viewmodel.js",
+      "js/viewmodels/commands/command/printer/options_viewmodel.js",
+      #       Listen/Save Variables
+      "js/viewmodels/commands/command/listen_save_vars_viewmodel.js",
+      #       Set Active Profile
+      "js/viewmodels/commands/command/set_active_profile_viewmodel.js",
+      #       Variables
+      "js/viewmodels/commands/command/variables_viewmodel.js",
+      #       Octoprint
+      "js/viewmodels/commands/command/octoprint_viewmodel.js",
+      #       Plugin PSUControl
+      "js/viewmodels/commands/command/plugin_psucontrol_viewmodel.js",
+
+      # Knockout Libraries
+      "js/knockout_libraries/knockout-repeat.js",
+      "js/knockout_libraries/knockout-file-bind.js"
+    ],
       # clientjs=['js/requre.js'],
       # jsclient=['js/requre.js'],
       css=["css/usb_keyboard.css"],
