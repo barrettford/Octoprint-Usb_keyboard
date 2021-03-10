@@ -435,15 +435,33 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
 
     profiles = self._settings.get(["profiles"])
     for profile in profiles:
-      filename = profile.get("key")
+      filename = profile.get("value") # value contains the uuid filename
       if filename:
         saved_filenames.append(filename)
 
-    # Now cleanup deleted profiles
     profiles_folder = self.get_profiles_data_folder()
-    filelist = [ f for f in os.listdir(profiles_folder) if f not in saved_filenames and not f.startswith(".") ]
-    for f in filelist:
-      os.remove(os.path.join(profiles_folder, f))
+    # Now touch all current profiles
+    # self._logger.info(f"saved_filenames {saved_filenames}")
+    save_filelist = [ f for f in os.listdir(profiles_folder) if f in saved_filenames and not f.startswith(".") ]
+    # self._logger.info(f"save_filelist {save_filelist}")
+    for f in save_filelist:
+      f_path = os.path.join(profiles_folder, f)
+      # self._logger.info(f"touching {f_path}")
+      os.utime(f_path)
+
+    # Now cleanup old deleted profiles
+    delete_filelist = [ f for f in os.listdir(profiles_folder) if f not in saved_filenames and not f.startswith(".") ]
+    # self._logger.info(f"delete_filelist {delete_filelist}")
+    for f in delete_filelist:
+      f_path = os.path.join(profiles_folder, f)
+      statinfo = os.stat(f_path)
+      max_age = (5 * 24 * 60 * 60) # 5 days in seconds.  Should be 432000
+      # self._logger.info(f"checking {f_path} file stats st_atime: {statinfo.st_atime} st_mtime: {statinfo.st_mtime} st_ctime: {statinfo.st_ctime}")
+      current_time = time.time()
+      threshold_time = statinfo.st_atime + max_age
+      if threshold_time < current_time:
+        # self._logger.info(f"deleting {f} ({statinfo.st_atime} + {max_age} = {threshold_time} < {current_time})")
+        os.remove(os.path.join(profiles_folder, f))
 
     return data
 
