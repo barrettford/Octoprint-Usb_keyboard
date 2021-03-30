@@ -127,27 +127,54 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
             command_presses = 1
 
         if command and (command_presses < 0 or command_presses >= presses_required):
-          # if command == "cancel_print":
-          #   self._printer.cancel_print()
-          # elif command == "pause_print":
-          #   self._printer.pause_print()
-          # elif command == "resume_print":
-          #   self._printer.resume_print()
-          # elif command == "start_print":
-          #   self._printer.start_print()
-          # elif command == "toggle_pause_print":
-          #   self._printer.toggle_pause_print()
-          # else:
-          if True:
+          if command == "cancel_print":
+            self._printer.cancel_print()
+          elif command == "pause_print":
+            self._printer.pause_print()
+          elif command == "resume_print":
+            self._printer.resume_print()
+          elif command == "start_print":
+            self._printer.start_print()
+          elif command == "toggle_pause_print":
+            self._printer.toggle_pause_print()
+          elif command == "toggle_cancel_print":
+            printer_status = self._printer.get_state_id()
+            self._logger.debug(f"Printer currently '{printer_status}', toggling...")
+            if printer_status == "PRINTING" or printer_status == "PAUSED":
+              self._printer.cancel_print()
+            else:
+              self._printer.start_print()
+          else:
+            self._logger.debug(f"Octoprint System Command '{command}'")
 
-            self._logger.info(f"System command defined: '{command}'!")
-            commandMap = self._settings.global_get(["server", "commands"])
-            self._logger.info(f"System list response: '{commandMap}'!")
-            system_command = self._settings.global_get(["server", "commands", "serverRestartCommand"])
-            self._logger.info(f"System command response: '{system_command}'!")
+            system_command = None
+            should_use_separate_shell = False
+            if command == "restart_server":
+              system_command = self._settings.global_get(["server", "commands", "serverRestartCommand"])
+            elif command == "restart_system":
+              system_command = self._settings.global_get(["server", "commands", "systemRestartCommand"])
+            elif command == "shutdown_system":
+              system_command = self._settings.global_get(["server", "commands", "systemShutdownCommand"])
+            # elif:  command == "generic_commandline"
+            #   system_command = current_action.get("commandline")
+            #   should_use_separate_shell = True
+            else:
+              self._logger.debug(f"System command not defined for: '{command}'!")
 
-            self.caller.call(system_command, shell=False)
+            if system_command is not None:
+              returncode = 0
+              try:
+                self._logger.info(f"Running system command '{system_command}'")
+                returncode, stdout, stderr = self.caller.call(system_command, shell=should_use_separate_shell)
+              except Exception as e:
+                self._logger.error(f"System command '{system_command}' failed due to '{e}'!")
+              if returncode is not 0:
+                self._logger.error(f"System command '{system_command}' failed due to '{stderr}'!")
+            else:
+              self._logger.info("No registered system command for '{command}'")
 
+          self.octoprint_last_command = None # reset this
+          self.octoprint_last_command_presses = 0 # reset this
         else:
           self.octoprint_last_command = command
           self.octoprint_last_command_presses = command_presses
@@ -161,7 +188,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         #  cp2004: There is a python way :slight_smile:
         # from octoprint.util.commandline import CommandLineCaller
         #
-        # caller = CommandLineCaller()
+        # caller = CommandlineCaller()
         #
         # # Wrap in error handling (can also use CommandLineError from octoprint.util.commandline)
         # returncode, stdout, stderr = caller.call(["your", "command", "here"])
@@ -241,6 +268,24 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
         gcode_options = current_action.get("options", "")
         printer_status = self._printer.get_state_id()
         can_send_commands = True
+
+        # get_state_id(*args, **kwargs)
+        #    Identifier of the current communication state.
+        #    Possible values are:
+        #            OPEN_SERIAL
+        #            DETECT_SERIAL
+        #            DETECT_BAUDRATE
+        #            CONNECTING
+        #            OPERATIONAL
+        #            PRINTING
+        #            PAUSED
+        #            CLOSED
+        #            ERROR
+        #            CLOSED_WITH_ERROR
+        #            TRANSFERING_FILE
+        #            OFFLINE
+        #            UNKNOWN
+        #            NONE
 
         if printer_status == "PRINTING":
           can_send_commands = "p" in gcode_options

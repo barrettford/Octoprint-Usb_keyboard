@@ -12,7 +12,16 @@ function CommandsCommandOctoprintViewModel(params) {
   self.type = params.commandActionObject.type;
   self.command = params.commandActionObject.command;
   self.presses_required = params.commandActionObject.presses_required.extend({ numeric: 0 });
-  self.supportedCommands = ["cancel_print", "confirm_last_command", "pause_print", "resume_print", "start_print", "toggle_pause_print"]
+  self.supportedCommands = ["cancel_print",
+                            "confirm_last_command",
+                            "pause_print",
+                            "resume_print",
+                            "start_print",
+                            "toggle_pause_print",
+                            "toggle_cancel_print",
+                            "restart_server",
+                            "restart_system",
+                            "shutdown_system"]
 }
 ko.components.register('sfr-commands-command-octoprint', {
   viewModel: CommandsCommandOctoprintViewModel,
