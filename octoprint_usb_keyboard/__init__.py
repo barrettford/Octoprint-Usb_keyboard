@@ -13,7 +13,6 @@ from .usb_keyboard.util import traverse_modify
 from .usb_keyboard.listener import KeyboardListenerThread
 from octoprint.events import eventManager
 
-
 class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
                          octoprint.plugin.ShutdownPlugin,
                          octoprint.plugin.SettingsPlugin,
@@ -21,6 +20,9 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
                          octoprint.plugin.EventHandlerPlugin,
                          octoprint.plugin.AssetPlugin,
                          octoprint.plugin.TemplatePlugin):
+
+  from octoprint.util.commandline import CommandlineCaller
+  caller = CommandlineCaller()
 
   ##~~EventHandlerPlugin mixin
 
@@ -125,18 +127,27 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
             command_presses = 1
 
         if command and (command_presses < 0 or command_presses >= presses_required):
-          if command == "cancel_print":
-            self._printer.cancel_print()
-          elif command == "pause_print":
-            self._printer.pause_print()
-          elif command == "resume_print":
-            self._printer.resume_print()
-          elif command == "start_print":
-            self._printer.start_print()
-          elif command == "toggle_pause_print":
-            self._printer.toggle_pause_print()
-          else:
-            self._logger.error(f"No action defined for octoprint command '{command}'!")
+          # if command == "cancel_print":
+          #   self._printer.cancel_print()
+          # elif command == "pause_print":
+          #   self._printer.pause_print()
+          # elif command == "resume_print":
+          #   self._printer.resume_print()
+          # elif command == "start_print":
+          #   self._printer.start_print()
+          # elif command == "toggle_pause_print":
+          #   self._printer.toggle_pause_print()
+          # else:
+          if True:
+
+            self._logger.info(f"System command defined: '{command}'!")
+            commandMap = self._settings.global_get(["server", "commands"])
+            self._logger.info(f"System list response: '{commandMap}'!")
+            system_command = self._settings.global_get(["server", "commands", "serverRestartCommand"])
+            self._logger.info(f"System command response: '{system_command}'!")
+
+            self.caller.call(system_command, shell=False)
+
         else:
           self.octoprint_last_command = command
           self.octoprint_last_command_presses = command_presses
@@ -144,6 +155,25 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
       else:
         self.octoprint_last_command = None
         self.octoprint_last_command_presses = 0
+
+
+        #
+        #  cp2004: There is a python way :slight_smile:
+        # from octoprint.util.commandline import CommandLineCaller
+        #
+        # caller = CommandLineCaller()
+        #
+        # # Wrap in error handling (can also use CommandLineError from octoprint.util.commandline)
+        # returncode, stdout, stderr = caller.call(["your", "command", "here"])
+        #
+        # If you want to use the configured command that's already there, or one input by a user, you should be able to (assuming self is your plugin)
+        # command = self._settings.global_get(["server", "commands", "serverRestartCommand"])
+        # self.caller.call(command, shell=True)
+        # [1:45 PM] cp2004: You should not generally run commands with shell=True, but in the case of user-configured commands it is very difficult not to do so.
+        # [1:46 PM] cp2004: If you know the commands in advance, they should be in list form, eg. ["sudo", "service", "octoprint", "restart"]
+        # [1:56 PM] cp2004: And to top it off, here's all the error handling I put round running this command and inputting a password:
+        # https://github.com/cp2004/OctoPrint-WS281x_LED_Status/blob/cbe84ded3b47bbe53aa7c67707a90b6e796f6e89/octoprint_ws281x_led_status/util.py#L101-L134
+        # The command line caller is a wrapper around Sarge, any args you can pass to sarge can be passed here
 
 
       # ------------------ Saving Vars -------------------
@@ -269,6 +299,7 @@ class Usb_keyboardPlugin(octoprint.plugin.StartupPlugin,
               self._logger.error(f"Should Never Get Here")
           else:
             self._logger.error(f"PSU Control plugin is Disabled or Not Installed!")
+
 
 
             #
