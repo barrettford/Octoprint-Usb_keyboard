@@ -66,7 +66,14 @@ class KeyboardListenerThread(threading.Thread):
     devices = [InputDevice(device) for device in list_devices()]
     for device in devices:
       message += f"  Device {device}\n"
-      options.append(str(device)[7:24].replace(",", ""))
       message += f"    Info {device.info}\n"
       message += f"    Physical {device.phys}\n"
+
+      # originally the value was `str(device)[7:24].replace(",", "")`,
+      # but that doesn't seem very stable?
+      options.append({
+          "label": f"{device.name} ({device.path})",
+          "value": device.path,
+      })
+
     return message, options

@@ -74,7 +74,7 @@
     <pre data-bind="text: deviceQueryMessage"></pre>
     <table>
       <tr data-bind="visible: devicePathOptions().length > -0">
-        <td><select data-bind="options: devicePathOptions, value: trialDevicePath"></select></td>
+        <td><select data-bind="options: devicePathOptions, optionsText: 'label', optionsValue:'value', value: trialDevicePath"></select></td>
         <td><button class="btn btn-default" data-bind="click: changeDevicePath">{{ _('Try Device') }}</button></td>
       </tr>
       <tr data-bind="visible: devicePathOptions().length > -0">
