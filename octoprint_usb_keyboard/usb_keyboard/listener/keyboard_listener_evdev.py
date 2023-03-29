@@ -66,7 +66,12 @@ class KeyboardListenerThread(threading.Thread):
     devices = [InputDevice(device) for device in list_devices()]
     for device in devices:
       message += f"  Device {device}\n"
-      options.append(str(device)[7:24].replace(",", ""))
       message += f"    Info {device.info}\n"
       message += f"    Physical {device.phys}\n"
+
+      if "usb" not in device.phys:
+          message += f"    Not including in list as not a usb device\n"
+          continue
+
+      options.append(str(device)[7:24].replace(",", ""))
     return message, options
